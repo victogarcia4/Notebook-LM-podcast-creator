@@ -257,6 +257,51 @@ Para hacer el sitio público **funcional** (pendiente, requiere confirmación de
 
 ---
 
-## 19. Changelog
+## 19. Sugerencias de cambios y mejoras propuestas
+
+Ideas concretas y accionables para futuros modelos/programadores. Cada una indica **dónde** tocar y **consideraciones**. Priorizadas de mayor a menor impacto.
+
+### A. Hacer funcional el sitio público (híbrido nube) — *impacto alto*
+Hoy Vercel es solo vitrina (ver §17). Para que muestre/reproduzca podcasts:
+1. **BD en la nube**: crear proyecto en **Neon** o **Supabase** (Postgres). Cambiar en `prisma/schema.prisma` `provider = "postgresql"` y `DATABASE_URL`. Correr `prisma migrate`. Ojo: hoy los estados son strings (SQLite); en Postgres podrían pasarse a enums nativos (opcional).
+2. **Storage de audio**: subir el MP3 a **Cloudflare R2** o **S3** en `worker.ts` (paso "descargar") en vez de `public/audio`; guardar la URL pública en `Podcast.audioPath`. Añadir SDK (`@aws-sdk/client-s3`) y credenciales en `.env`.
+3. **Worker + login siguen en el Windows local**, apuntando a la BD/-storage en la nube. El login a NotebookLM **siempre** es local.
+4. Variables de entorno en Vercel (DATABASE_URL, credenciales de storage). El worker local usa las mismas.
+
+### B. Editar / regenerar podcasts desde la UI — *impacto alto*
+- Hoy editar título/tema solo se hace por script contra la BD. Añadir `PATCH /api/podcasts/:id` (título, tema) y un modal de edición en la tarjeta/detalle. Al cambiar el título, re-traducir `titleEn/titleEs` (usar `translateTitleBoth`).
+- "Regenerar" = reusar `POST /api/podcasts/:id/retry` (ya existe) pero permitiendo cambiar formato/duración antes.
+
+### C. Otros formatos de NotebookLM — *impacto medio*
+El CLI ya soporta `generate video | slide-deck | quiz | flashcards | infographic | mind-map | report | data-table`. Añadir:
+- Selector de "tipo de salida" en el formulario (hoy solo audio).
+- Funciones en `client.ts` análogas a `generateAudio`/`downloadAudio` para cada tipo (patrón idéntico: `generate <tipo> -n <id> --wait`, luego `download <tipo> <ruta>`).
+- Campo `kind` en `Podcast` (audio/video/…); el reproductor/preview cambia según tipo (mp4, pdf, png, json).
+
+### D. Búsqueda y filtros en la Biblioteca — *impacto medio*
+- `GET /api/podcasts` ya acepta `?status=&q=`. Añadir en `library/page.tsx` un input de búsqueda y chips de filtro (status/formato/idioma) que llamen al endpoint. Añadir paginación real (hoy límite fijo 100).
+
+### E. Portadas y transcripciones — *impacto medio*
+- Portada: generar/asignar una imagen por podcast (campo `coverPath`); mostrar en tarjeta y detalle.
+- Transcripción: si el CLI/NotebookLM la expone, guardarla y mostrarla bajo el reproductor.
+
+### F. Notificaciones al terminar — *impacto bajo/medio*
+- El worker podría notificar (webhook, email, o Web Push) cuando un podcast pasa a PUBLISHED. Hoy el usuario debe recargar la Biblioteca.
+
+### G. Refresco/gestión de sesión de NotebookLM — *impacto medio*
+- La sesión caduca y requiere re-login manual (ya hay botón en la app, §17/§10.5). Explorar: aviso proactivo antes de generar si `auth check --test` falla; reintentar login automático; o refrescar cookies si la librería lo permite.
+- Manejar el caso de **fallo persistente** de investigación web (no solo transitorio): tras N reintentos, marcar FAILED con un mensaje claro y sugerir aportar URLs propias.
+
+### H. Autenticación de usuarios / multiusuario — *impacto alto, esfuerzo alto*
+- Hoy no hay usuarios. Añadir auth (p. ej. NextAuth), asociar podcasts a usuarios, visibilidad público/privado, y la tabla `Favorite` prevista en el plan original.
+
+### I. Robustez y calidad — *varios*
+- Subir a **Next 16** (resuelve advisories pendientes; es breaking: revisar cambios de App Router/params async).
+- Tests (unit del `client.ts`/`translate.ts`; e2e con Playwright del flujo de generación).
+- Sanitizar mejor el input del tema (hoy se recorta a 10–500 chars; el doble espacio del ejemplo "When  should" pasó tal cual).
+
+---
+
+## 20. Changelog
 
 - **2026-07-02** — Estado inicial documentado. App creada de cero: generación end-to-end vía NotebookLM CLI, cola+worker+SSE, biblioteca+reproductor. Añadido: bilingüe EN/ES con toggle y títulos traducidos, rediseño editorial (de `Youtube.html`), nombre "Notebook LM Podcast Creator", footer con foto/crédito, banner de estado de sesión, borrar/reintentar podcasts, arreglos de robustez (barra de progreso instantánea, reintentos en investigación), y **botón "Iniciar sesión en NotebookLM"** en la app (`/api/auth/login` + `scripts/nlm_login.py`). Deploy inicial en Vercel (solo vitrina de UI).
