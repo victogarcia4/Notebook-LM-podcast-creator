@@ -113,6 +113,7 @@ SQLite → los "enums" son **strings**.
 | `POST /api/podcasts/:id/retry` | Reencola: resetea Podcast (status=PENDING, limpia errorMsg/notebookId/audioPath) y Job (QUEUED, stage=queued, progress=0). |
 | `GET /api/status/:jobId` | **SSE**. Sondea la BD cada 2 s; emite `{ jobId, podcastId, status, stage, progress, errorMsg, audioPath, podcastStatus }`. Cierra al llegar a DONE/FAILED. |
 | `GET /api/auth/status` | Ejecuta `auth check --test` (llamada de token REAL) y devuelve `{ valid: boolean }`. |
+| `POST /api/auth/login` | **Solo local.** Lanza `scripts/nlm_login.py` (Playwright) que abre Chrome para iniciar sesión en NotebookLM y guarda la sesión automáticamente. Deriva el Python del venv de `NLM_PATH` (o `NLM_PYTHON`). Si no encuentra el Python/script (p. ej. en Vercel), devuelve error 400. |
 
 ---
 
@@ -150,10 +151,12 @@ Funciones: `runNlm`, `runNlmJson`, `authCheck`, `authStatus` (usa `auth check --
 2. **`NLM_PATH` con barras normales `/`**. Con `\\`, `dotenv` interpreta `\n` de `\notebooklm` como salto de línea y **corrompe la ruta**. El cliente hace `path.normalize` por robustez, pero mantener `/` en `.env`.
 3. **Prisma + certificado TLS**: esta máquina intercepta TLS con un CA propio. `prisma generate` / `db push` / `next build` fallan al descargar el engine salvo con `NODE_OPTIONS=--use-system-ca`. En PowerShell: `$env:NODE_OPTIONS="--use-system-ca"` antes del comando. (El runtime usa engines ya cacheados, así que `npm run dev`/`worker` no lo necesitan.)
 4. **Traducción y TLS**: `src/lib/translate.ts` intenta `fetch` normal y, si el proxy lo bloquea, reintenta con un **dispatcher de `undici` que ignora el certificado** (solo para estas peticiones). Por eso funciona sin flags. Timeout de 8 s por petición.
-5. **Sesión de NotebookLM caduca** (~horas/días). Síntoma: el worker falla en `create` con *"Authentication expired or invalid… Run 'notebooklm login'"*. El banner de la app (`/api/auth/status`) lo detecta en vivo. **Re-autenticar** con el flujo Playwright:
-   - Script que abre Chrome persistente, el usuario inicia sesión en `notebooklm.google.com`, y al recibir una señal (`%TEMP%/nlm_save_signal`) guarda `storage_state.json`.
+5. **Sesión de NotebookLM caduca** (~horas/días). Síntoma: el worker falla en `create` con *"Authentication expired or invalid… Run 'notebooklm login'"*. El banner de la app (`/api/auth/status`) lo detecta en vivo. **Re-autenticar** de dos formas:
+   - **Desde la app (recomendado, solo local)**: botón **"Iniciar sesión en NotebookLM"** en el banner → `POST /api/auth/login` lanza `scripts/nlm_login.py`, abre Chrome, el usuario inicia sesión y el script **guarda solo** al detectar login válido (cookie SID + página en notebooklm, estable 2 chequeos). La app sondea `/api/auth/status` hasta ponerse verde.
+   - **Manual**: ejecutar el script de login con el Python del venv.
    - **Ruta de sesión que lee el CLI**: `C:\Users\<user>\.notebooklm\profiles\default\storage_state.json` (¡no la legacy `~/.notebooklm/storage_state.json`!).
    - Verificar con `notebooklm auth check --test` (el `auth check` sin `--test` solo valida que existan cookies, no que sirvan).
+   - **El login por navegador NO funciona en Vercel/Linux** (no hay Chrome ni el .exe): siempre en la máquina Windows local.
 6. **Next fijado en 14.2.35** (parchea el CVE del aviso original). Advisories restantes requieren Next 16 (breaking) — **pendiente**.
 
 ---
@@ -182,11 +185,13 @@ Extraído de `public/Youtube.html` (estilo editorial oscuro).
 
 **Páginas** (`app/`): `layout.tsx` (metadata "Notebook LM Podcast Creator", fuentes, `I18nProvider`, `Header`, `SiteFooter`) · `page.tsx` (`AuthBanner` + `Hero` + `PodcastGenerator`) · `library/page.tsx` (client; fetch `/api/podcasts`; grid de `PodcastCard`, `onChanged=load`) · `podcast/[id]/page.tsx` (client; detalle; muestra `AudioPlayer` si PUBLISHED, `LiveStatus` si en progreso, error si FAILED; botones **Retry** (si FAILED) y **Delete**).
 
-**Componentes** (`components/`): `Header` · `LanguageToggle` · `SiteFooter` (foto `/VHGM%20pic%20foto.PNG` + crédito) · `Hero` · `AuthBanner` (estados checking/valid/invalid con instrucciones de re-login) · `PodcastGenerator` (formulario; `useSSE`; muestra `ProgressTracker`) · `ProgressTracker` (etapas, barra, botón Retry al fallar) · `PodcastCard` (título con `pickTitle`; botones Delete y Retry-si-FAILED) · `AudioPlayer` (audio + descarga; incrementa plays) · `LiveStatus` (`useSSE` + `ProgressTracker`).
+**Componentes** (`components/`): `Header` · `LanguageToggle` · `SiteFooter` (foto `/VHGM%20pic%20foto.PNG` + crédito) · `Hero` · `AuthBanner` (estados checking/valid/invalid/loggingIn; botón **"Iniciar sesión en NotebookLM"** que llama a `/api/auth/login` y sondea el estado hasta ponerse verde) · `PodcastGenerator` (formulario; `useSSE`; muestra `ProgressTracker`) · `ProgressTracker` (etapas, barra, botón Retry al fallar) · `PodcastCard` (título con `pickTitle`; botones Delete y Retry-si-FAILED) · `AudioPlayer` (audio + descarga; incrementa plays) · `LiveStatus` (`useSSE` + `ProgressTracker`).
 
 **Hook**: `hooks/useSSE.ts` (EventSource a `/api/status/[jobId]`; tipo `JobStatus`).
 
 **public/**: `VHGM pic foto.PNG` (foto autor, versionada) · `Youtube.html` (referencia de estilo) · `audio/*.mp3` (generados, **gitignored**).
+
+**scripts/**: `nlm_login.py` (login Playwright a NotebookLM lanzado desde `/api/auth/login`; guarda `storage_state.json` automáticamente).
 
 ---
 
@@ -198,6 +203,7 @@ Extraído de `public/Youtube.html` (estilo editorial oscuro).
 - ✅ **Bilingüe EN/ES** (EN por defecto) con toggle; títulos de tarjeta según idioma (traducción automática).
 - ✅ Diseño editorial oscuro (de `Youtube.html`); nombre "Notebook LM Podcast Creator"; footer con foto y crédito.
 - ✅ **Banner de estado de sesión** de NotebookLM al iniciar (chequeo real de token) con instrucciones de re-login.
+- ✅ **Botón "Iniciar sesión en NotebookLM"** en la app (local): abre Chrome, guarda la sesión sola y el banner pasa a verde.
 - ✅ **Borrar** podcasts (BD + MP3) y **Reintentar** generaciones fallidas (tarjeta, detalle y tracker).
 - ✅ Robustez: barra de progreso instantánea (traducción movida al worker); reintentos con backoff en investigación web; timeouts en traducción.
 
@@ -225,3 +231,32 @@ Extraído de `public/Youtube.html` (estilo editorial oscuro).
 - **Llamadas al CLI** → añadir función en `client.ts` (con `-n <id>` y `--json`), no invocar `execFile` desde componentes.
 - **Trabajo largo** → siempre vía el worker + Job, nunca dentro de una API route.
 - **Commits**: repo ya inicializado; `.env`/`node_modules`/`dev.db`/`*.mp3` están gitignored.
+
+---
+
+## 17. Despliegue y realidad en Vercel
+
+Existe un deploy en **https://notebook-lm-podcast-creator.vercel.app** pero es **solo una vitrina de la interfaz**. En Vercel (Linux serverless):
+- ❌ **No genera podcasts**: `notebooklm.exe` es solo Windows y no existe ahí.
+- ❌ **No hace login**: el login necesita un Chrome real (no hay escritorio). `/api/auth/login` devuelve 400.
+- ❌ **Biblioteca vacía**: la BD (`dev.db`) y los MP3 (`public/audio`) están gitignored → no se despliegan. El sistema de archivos de Vercel es efímero/solo-lectura.
+- 🔴 El banner sale **rojo siempre** (intenta ejecutar el CLI inexistente).
+
+**Los datos y la generación viven solo en la máquina Windows local.**
+
+Para hacer el sitio público **funcional** (pendiente, requiere confirmación del usuario): arquitectura **híbrida** →
+1. BD en la nube (**Neon/Supabase Postgres**) — cambiar `provider` de Prisma a `postgresql` y `DATABASE_URL`; ojo: SQLite usa strings donde Postgres podría usar enums.
+2. Storage de MP3 en la nube (**Cloudflare R2 / S3**) — reemplazar la escritura a `public/audio` por subida a un bucket y guardar la URL pública en `audioPath`.
+3. El **worker + login siguen en el Windows local**, conectados a esa BD/-storage en la nube. El login a NotebookLM **siempre** es local.
+
+---
+
+## 18. Mantenimiento de este documento
+
+**Regla del proyecto:** actualizar este `HANDOFF.md` **al final de cada sesión que modifique la app** (nuevas funciones, endpoints, modelos, gotchas o decisiones), y añadir una entrada al changelog. Commitear el HANDOFF junto con los cambios.
+
+---
+
+## 19. Changelog
+
+- **2026-07-02** — Estado inicial documentado. App creada de cero: generación end-to-end vía NotebookLM CLI, cola+worker+SSE, biblioteca+reproductor. Añadido: bilingüe EN/ES con toggle y títulos traducidos, rediseño editorial (de `Youtube.html`), nombre "Notebook LM Podcast Creator", footer con foto/crédito, banner de estado de sesión, borrar/reintentar podcasts, arreglos de robustez (barra de progreso instantánea, reintentos en investigación), y **botón "Iniciar sesión en NotebookLM"** en la app (`/api/auth/login` + `scripts/nlm_login.py`). Deploy inicial en Vercel (solo vitrina de UI).

@@ -28,6 +28,10 @@ const EN: Dict = {
   "auth.howto":
     "To re-authenticate: open a terminal and run  notebooklm login  (or ask to re-run the login flow), then reload this page.",
   "auth.recheck": "Re-check",
+  "auth.login": "Log in to NotebookLM",
+  "auth.loggingIn":
+    "A browser window opened — sign in to Google and open notebooklm.google.com. This page will detect it automatically…",
+  "auth.loginError": "Could not start the browser login (run the app locally on Windows).",
 
   "hero.eyebrow": "AI-POWERED PODCAST STUDIO",
   "hero.titlePre": "Turn any topic into a",
@@ -120,6 +124,11 @@ const ES: Dict = {
   "auth.howto":
     "Para volver a autenticarte: abre una terminal y ejecuta  notebooklm login  (o pídeme reiniciar el flujo de login), luego recarga esta página.",
   "auth.recheck": "Volver a comprobar",
+  "auth.login": "Iniciar sesión en NotebookLM",
+  "auth.loggingIn":
+    "Se abrió una ventana del navegador — inicia sesión en Google y entra a notebooklm.google.com. Esta página lo detectará automáticamente…",
+  "auth.loginError":
+    "No se pudo iniciar el login por navegador (ejecuta la app localmente en Windows).",
 
   "hero.eyebrow": "ESTUDIO DE PODCASTS CON IA",
   "hero.titlePre": "Convierte cualquier tema en un",
