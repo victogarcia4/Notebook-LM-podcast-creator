@@ -247,27 +247,7 @@ export function NotebookImporter({ onJobCreated }: Props) {
     );
   }
 
-  if (notebooks.length === 0) {
-    return (
-      <div className="card text-center">
-        <p className="text-dim">No notebooks found.</p>
-        <p className="text-sm text-mute mt-2">
-          Create one in{" "}
-          <a
-            href="https://notebooklm.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-accent"
-          >
-            NotebookLM
-          </a>{" "}
-          first.
-        </p>
-      </div>
-    );
-  }
-
-  // Manual import mode (production)
+  // Manual import mode (production) - check BEFORE notebooks.length
   if (!isLocalhost) {
     return (
       <div className="card">
@@ -365,6 +345,27 @@ export function NotebookImporter({ onJobCreated }: Props) {
             {importing ? "Importing..." : "Import Podcast"}
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Localhost only: check if notebooks list is empty
+  if (notebooks.length === 0) {
+    return (
+      <div className="card text-center">
+        <p className="text-dim">No notebooks found.</p>
+        <p className="text-sm text-mute mt-2">
+          Create one in{" "}
+          <a
+            href="https://notebooklm.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-accent"
+          >
+            NotebookLM
+          </a>{" "}
+          first.
+        </p>
       </div>
     );
   }
