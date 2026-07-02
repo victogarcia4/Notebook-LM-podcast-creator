@@ -7,3 +7,5 @@ dev.db-journal
 public/audio/*.mp3
 .env
 *.log
+
+.vercel

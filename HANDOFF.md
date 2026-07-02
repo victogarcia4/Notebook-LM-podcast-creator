@@ -308,3 +308,83 @@ El CLI ya soporta `generate video | slide-deck | quiz | flashcards | infographic
 ## 20. Changelog
 
 - **2026-07-02** — Estado inicial documentado. App creada de cero: generación end-to-end vía NotebookLM CLI, cola+worker+SSE, biblioteca+reproductor. Añadido: bilingüe EN/ES con toggle y títulos traducidos, rediseño editorial (de `Youtube.html`), nombre "Notebook LM Podcast Creator", footer con foto/crédito, banner de estado de sesión, borrar/reintentar podcasts, arreglos de robustez (barra de progreso instantánea, reintentos en investigación), y **botón "Iniciar sesión en NotebookLM"** en la app (`/api/auth/login` + `scripts/nlm_login.py`). Deploy inicial en Vercel (solo vitrina de UI). Botón de login **probado OK** (sesión se restaura y el banner pasa a verde). Añadida §19 con sugerencias/mejoras propuestas. Al cierre de la sesión: 2 podcasts en la BD local (1 PUBLISHED, 1 PUBLISHED tras retry), sesión de NotebookLM válida.
+# Actualizacion 2026-07-02 - modo publico hibrido
+
+La app fue preparada para pasar de MVP local a despliegue publico funcional con arquitectura hibrida:
+
+- Prisma ahora usa **Postgres** (`provider = "postgresql"`) en vez de SQLite.
+- Se agrego el modelo `WorkerStatus` para que el worker Windows reporte estado, autenticacion real de NotebookLM y `lastSeenAt`.
+- Se agrego `src/lib/storage.ts` con `STORAGE_DRIVER=local|s3`; en modo `s3` sube MP3 a S3/Cloudflare R2 y guarda una URL publica en `Podcast.audioPath`.
+- El worker Windows sigue ejecutando `notebooklm.exe`, pero ahora puede subir el MP3 a storage remoto y actualizar la BD publica.
+- `/api/auth/status` ya no intenta ejecutar `notebooklm.exe` en servidores sin CLI; en Vercel lee `WorkerStatus` desde Postgres.
+- `AuthBanner` fue adaptado para entorno publico: muestra worker offline o worker sin sesion, y no ofrece login local cuando el servidor es remoto.
+- `.env.example` y `README.md` documentan `DATABASE_URL` Postgres y variables `S3_*`.
+
+Verificado: `npx prisma validate` OK con URL Postgres temporal, `npx prisma generate` OK tras detener procesos Node del proyecto, `npm run build` OK. Advertencia no bloqueante: Next no pudo optimizar Google Fonts durante build.
+
+Pendiente para hacer live: crear Postgres real, crear bucket R2/S3 con URL publica, configurar variables en Vercel y en Windows, ejecutar `npm run db:push` contra Postgres real, redesplegar Vercel y arrancar `npm run worker` en Windows.
+
+---
+
+# Actualizacion 2026-07-02 - intento de configuracion publica
+
+Se vinculo el repo local al proyecto Vercel existente `vhgarcia100-7168s-projects/notebook-lm-podcast-creator` con `vercel link`; la URL de produccion sigue siendo `https://notebook-lm-podcast-creator.vercel.app`. Vercel no tiene variables de entorno de produccion configuradas aun (`vercel env ls production` mostro 0 variables).
+
+Se intento crear un proyecto Supabase dedicado llamado `Notebook LM Podcast Creator` en `Victor Garcia Org` (`mepwoqlffquswgiikwpz`), region `us-east-2`. El costo reportado por Supabase fue `$0/month`, pero la creacion fallo porque la cuenta alcanzo el limite de 2 proyectos free activos. Proyectos activos disponibles sin conflictos de tablas `Podcast`/`GenerationJob`: `Vitruvian Websites` (`ggaxyfvjvsslfytywhgb`, us-east-1) y `Zulyskincare web` (`pqlxyzlwpgvniqnswmss`, us-west-2). Usar uno existente requiere pegar/configurar su `DATABASE_URL` Postgres real; el conector Supabase permite SQL, pero no expone la contrasena de la DB.
+
+Bloqueador actual para completar el live deploy: faltan secretos reales para `DATABASE_URL` y storage `S3_*`/R2. Una vez disponibles: configurar env vars en Vercel, ejecutar `npm run db:push` contra Postgres, desplegar Vercel prod y arrancar el worker Windows con las mismas variables.
+
+---
+
+# Actualizacion 2026-07-02 - Supabase elegido y tablas creadas
+
+El usuario eligio usar el proyecto Supabase existente `Zulyskincare web` / `https://pqlxyzlwpgvniqnswmss.supabase.co` (`project_id=pqlxyzlwpgvniqnswmss`) dentro de Victor Garcia Org. Para evitar mezclar nombres con las tablas existentes `bookings` y `availability_settings`, Prisma fue mapeado a tablas prefijadas:
+
+- `Podcast` -> `public.podcast_creator_podcasts`
+- `PodcastSource` -> `public.podcast_creator_sources`
+- `GenerationJob` -> `public.podcast_creator_generation_jobs`
+- `WorkerStatus` -> `public.podcast_creator_worker_status`
+
+Se aplico migracion Supabase `create_podcast_creator_tables` con exito. Las tablas existen y estan vacias. `prisma/schema.prisma` usa `@@map`/`@map` para mantener el codigo TypeScript igual y usar nombres SQL en snake_case. Verificacion despues del mapeo: `npx prisma validate` OK, `npx prisma generate` OK, `npm run build` OK con solo advertencia no bloqueante de Google Fonts.
+
+Nota de seguridad Supabase: el advisor marco RLS deshabilitado en las 4 tablas nuevas. No se habilito automaticamente porque la app accede por Prisma/server-side con `DATABASE_URL` privada, y activar RLS sin policies podria bloquear la app. Si mas adelante se expone acceso por Supabase client/anon key, disenar policies primero.
+
+Pendiente para completar Vercel: obtener/configurar el `DATABASE_URL` real de este proyecto Supabase y las credenciales R2/S3 (`STORAGE_DRIVER`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`, etc.).
+
+---
+
+# Actualizacion 2026-07-02 - DATABASE_URL configurado y Vercel desplegado
+
+Se creo un rol Postgres dedicado `podcast_creator_app` en Supabase `pqlxyzlwpgvniqnswmss` y se le dieron permisos `select/insert/update/delete` solo sobre las tablas `public.podcast_creator_*`. El `.env` local fue actualizado para usar el Supavisor transaction pooler con usuario `podcast_creator_app.pqlxyzlwpgvniqnswmss` y parametros Prisma `pgbouncer=true&connection_limit=1&pool_timeout=30`. Se verifico conexion local con Prisma: `podcasts=0`, `jobs=0`, `worker_status=0`.
+
+Se configuro `DATABASE_URL` en Vercel Production como variable sensible y se desplego produccion con `vercel --prod --yes`. Deployment listo: `dpl_BVteqLwdFMeLS7SyG8sh9sa5FG2Q`; alias principal activo: `https://notebook-lm-podcast-creator.vercel.app`. Verificacion publica: `/api/podcasts` responde `[]`; `/api/auth/status` responde `source=worker`, `workerOnline=false`, `valid=false`, lo esperado porque el worker Windows aun no esta corriendo contra storage cloud.
+
+Pendiente para app end-to-end: configurar storage R2/S3 (`STORAGE_DRIVER=s3`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`, `S3_KEY_PREFIX=audio`) en `.env` local y Vercel; despues arrancar `npm run worker` en Windows. No arrancar el worker para producir podcasts publicos hasta que storage este listo, porque si `STORAGE_DRIVER` queda en local guardaria `/audio/...` que Vercel no puede servir.
+
+---
+
+# Actualizacion 2026-07-02 - Cloudflare R2 storage configurado localmente
+
+Se configuraron las credenciales de **Cloudflare R2** en el `.env` local para habilitar el almacenamiento de audio en la nube:
+
+```
+STORAGE_DRIVER="s3"
+S3_ENDPOINT="https://ac03dec159ee171771f8c9e9d9a16a8b.r2.cloudflarestorage.com"
+S3_REGION="auto"
+S3_BUCKET="podcast-audio"
+S3_ACCESS_KEY_ID="0e014180a307db12f183586c1fc94599"
+S3_SECRET_ACCESS_KEY="e2119472578caa83b1204828180a3aa64758b3ff0a0a8345491812bcf4f033b4"
+S3_PUBLIC_BASE_URL="https://pub-2acff2bce0e9482ab3b24a432884cc5c.r2.dev"
+S3_KEY_PREFIX="audio"
+```
+
+Con esto, cuando el worker Windows genere podcasts, subirá los MP3 a R2 y guardará la URL pública (formato: `https://pub-2acff2bce0e9482ab3b24a432884cc5c.r2.dev/audio/<podcastId>.mp3`) en `Podcast.audioPath`. El reproductor puede servir estos archivos desde cualquier lugar.
+
+**Pendiente para completar deploy público funcional:**
+1. Configurar las mismas variables de entorno R2 en **Vercel Production** (panel web o `vercel env add`).
+2. Arrancar `npm run worker` en la máquina Windows local apuntando a la BD Postgres pública (`DATABASE_URL` ya está configurado desde la actualización anterior).
+3. Generar un podcast de prueba desde el sitio Vercel prod para verificar el flujo end-to-end.
+
+**Importante:** No arrancar el worker para uso público hasta configurar R2 en Vercel, porque cualquier podcast generado con `STORAGE_DRIVER=local` quedaría con rutas `/audio/...` que Vercel no puede servir.
+
+---

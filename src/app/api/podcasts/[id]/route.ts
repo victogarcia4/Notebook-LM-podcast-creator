@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
-import fs from "node:fs/promises";
 import { prisma } from "@/lib/db";
+import { deleteAudioObject } from "@/lib/storage";
 
 // GET /api/podcasts/:id  -> detalle
 export async function GET(
@@ -45,12 +44,7 @@ export async function DELETE(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  // Borra el archivo de audio si existe (audioPath es del tipo /audio/<id>.mp3).
-  if (podcast.audioPath) {
-    const rel = podcast.audioPath.replace(/^\//, "");
-    const abs = path.join(process.cwd(), "public", rel);
-    await fs.unlink(abs).catch(() => {});
-  }
+  await deleteAudioObject(podcast.audioPath);
 
   // onDelete: Cascade en el schema borra sources y job.
   await prisma.podcast.delete({ where: { id: params.id } });

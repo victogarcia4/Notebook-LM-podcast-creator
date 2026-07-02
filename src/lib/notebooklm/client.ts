@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import fs from "node:fs";
 import { promisify } from "node:util";
 import path from "node:path";
 
@@ -17,6 +18,10 @@ const NLM_PATH = path.normalize(
 
 // Timeout amplio: la generación de audio puede tardar 10-20 min.
 const DEFAULT_TIMEOUT_MS = 25 * 60 * 1000;
+
+export function hasLocalNlm(): boolean {
+  return fs.existsSync(NLM_PATH);
+}
 
 export interface NlmResult {
   stdout: string;

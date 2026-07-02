@@ -4,10 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
 type State = "checking" | "valid" | "invalid" | "loggingIn";
+type AuthStatus = {
+  valid: boolean;
+  source?: "local" | "worker";
+  workerOnline?: boolean;
+  message?: string | null;
+  lastSeenAt?: string | null;
+};
 
 export default function AuthBanner() {
   const { t } = useI18n();
   const [state, setState] = useState<State>("checking");
+  const [status, setStatus] = useState<AuthStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -18,19 +26,33 @@ export default function AuthBanner() {
     }
   };
 
-  const check = useCallback(async (): Promise<boolean> => {
+  const check = useCallback(async (): Promise<AuthStatus> => {
     try {
       const r = await fetch("/api/auth/status", { cache: "no-store" });
       const d = await r.json();
-      return !!d.valid;
+      const next = {
+        valid: !!d.valid,
+        source: d.source,
+        workerOnline: d.workerOnline,
+        message: d.message,
+        lastSeenAt: d.lastSeenAt,
+      };
+      setStatus(next);
+      return next;
     } catch {
-      return false;
+      const next = {
+        valid: false,
+        workerOnline: false,
+        message: t("auth.statusError"),
+      };
+      setStatus(next);
+      return next;
     }
-  }, []);
+  }, [t]);
 
   const runCheck = useCallback(() => {
     setState("checking");
-    check().then((valid) => setState(valid ? "valid" : "invalid"));
+    check().then((d) => setState(d.valid ? "valid" : "invalid"));
   }, [check]);
 
   useEffect(() => {
@@ -52,14 +74,13 @@ export default function AuthBanner() {
       return;
     }
 
-    // Sondea el estado real hasta que la sesión sea válida (o ~5 min).
     setState("loggingIn");
     let elapsed = 0;
     stopPolling();
     pollRef.current = setInterval(async () => {
       elapsed += 4;
-      const valid = await check();
-      if (valid) {
+      const d = await check();
+      if (d.valid) {
         stopPolling();
         setState("valid");
       } else if (elapsed >= 300) {
@@ -81,7 +102,7 @@ export default function AuthBanner() {
   if (state === "valid") {
     return (
       <div className="mb-6 flex items-center gap-2 border border-line px-4 py-3 font-mono text-xs uppercase tracking-widest text-dim">
-        <span className="text-[#3ddc84]">●</span> {t("auth.active")}
+        <span className="text-[#3ddc84]">*</span> {t("auth.active")}
       </div>
     );
   }
@@ -98,23 +119,32 @@ export default function AuthBanner() {
     );
   }
 
-  // invalid
   return (
     <div className="mb-6 border-2 border-accent bg-accent/10 p-5">
       <div className="mb-2 flex items-center gap-2">
         <span className="font-mono text-xs uppercase tracking-widest text-accent">
-          ⚠ {t("auth.expiredTitle")}
+          ! {t("auth.expiredTitle")}
         </span>
       </div>
-      <p className="text-sm text-fg">{t("auth.expiredBody")}</p>
-      <p className="mt-2 font-mono text-xs text-dim">{t("auth.howto")}</p>
+      <p className="text-sm text-fg">
+        {status?.source === "worker" && status.workerOnline === false
+          ? t("auth.workerOffline")
+          : status?.source === "worker"
+            ? t("auth.workerInvalid")
+            : t("auth.expiredBody")}
+      </p>
+      <p className="mt-2 font-mono text-xs text-dim">
+        {status?.message || t("auth.howto")}
+      </p>
       {error && <p className="mt-2 text-xs text-accent">{error}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
-        <button onClick={handleLogin} className="btn-primary">
-          → {t("auth.login")}
-        </button>
+        {status?.source !== "worker" && (
+          <button onClick={handleLogin} className="btn-primary">
+            -&gt; {t("auth.login")}
+          </button>
+        )}
         <button onClick={runCheck} className="btn-outline">
-          ↻ {t("auth.recheck")}
+          Refresh {t("auth.recheck")}
         </button>
       </div>
     </div>

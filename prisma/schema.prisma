@@ -1,62 +1,72 @@
-// Podcast Creator — esquema MVP (SQLite)
-// Estados y etapas se guardan como strings (SQLite no soporta enums nativos).
+// Podcast Creator - esquema publico hibrido (Postgres).
+// Estados y etapas se guardan como strings para mantener compatibilidad simple.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Podcast {
   id          String   @id @default(cuid())
   title       String
-  // Títulos traducidos para mostrar en la tarjeta según el idioma del toggle.
-  titleEn     String?
-  titleEs     String?
+  titleEn     String?  @map("title_en")
+  titleEs     String?  @map("title_es")
   topic       String
-  // deep-dive | brief | critique | debate
   format      String   @default("deep-dive")
-  // short | default | long
   length      String   @default("default")
   language    String   @default("es")
-  // PENDING | GENERATING | PUBLISHED | FAILED
   status      String   @default("PENDING")
-  notebookId  String?
-  audioPath   String?
-  durationSec Int?
+  notebookId  String?  @map("notebook_id")
+  audioPath   String?  @map("audio_path")
+  durationSec Int?     @map("duration_sec")
   plays       Int      @default(0)
-  errorMsg    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  errorMsg    String?  @map("error_msg")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   sources PodcastSource[]
   job     GenerationJob?
+
+  @@map("podcast_creator_podcasts")
 }
 
 model PodcastSource {
   id        String   @id @default(cuid())
-  podcastId String
-  // url | research
+  podcastId String   @map("podcast_id")
   kind      String   @default("url")
   value     String
   podcast   Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("podcast_creator_sources")
 }
 
 model GenerationJob {
   id        String   @id @default(cuid())
-  podcastId String   @unique
-  // QUEUED | RUNNING | DONE | FAILED
+  podcastId String   @unique @map("podcast_id")
   status    String   @default("QUEUED")
-  // etapa legible: created | research | generating | downloading | done
   stage     String   @default("queued")
   progress  Int      @default(0)
-  errorMsg  String?
+  errorMsg  String?  @map("error_msg")
   attempts  Int      @default(0)
   podcast   Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("podcast_creator_generation_jobs")
+}
+
+model WorkerStatus {
+  id         String   @id @default("default")
+  status     String   @default("UNKNOWN")
+  authValid  Boolean? @map("auth_valid")
+  message    String?
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("podcast_creator_worker_status")
 }

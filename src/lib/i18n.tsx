@@ -32,6 +32,11 @@ const EN: Dict = {
   "auth.loggingIn":
     "A browser window opened — sign in to Google and open notebooklm.google.com. This page will detect it automatically…",
   "auth.loginError": "Could not start the browser login (run the app locally on Windows).",
+  "auth.statusError": "Could not check the worker status.",
+  "auth.workerOffline":
+    "The public app is online, but the Windows worker is not connected. New jobs will stay queued until the worker starts.",
+  "auth.workerInvalid":
+    "The Windows worker is connected, but its NotebookLM session is not valid. New jobs may fail until the worker is re-authenticated.",
 
   "hero.eyebrow": "AI-POWERED PODCAST STUDIO",
   "hero.titlePre": "Turn any topic into a",
@@ -129,6 +134,11 @@ const ES: Dict = {
     "Se abrió una ventana del navegador — inicia sesión en Google y entra a notebooklm.google.com. Esta página lo detectará automáticamente…",
   "auth.loginError":
     "No se pudo iniciar el login por navegador (ejecuta la app localmente en Windows).",
+  "auth.statusError": "No se pudo comprobar el estado del worker.",
+  "auth.workerOffline":
+    "La app publica esta en linea, pero el worker de Windows no esta conectado. Los jobs nuevos quedaran en cola hasta que el worker arranque.",
+  "auth.workerInvalid":
+    "El worker de Windows esta conectado, pero su sesion de NotebookLM no es valida. Los jobs nuevos pueden fallar hasta reautenticar el worker.",
 
   "hero.eyebrow": "ESTUDIO DE PODCASTS CON IA",
   "hero.titlePre": "Convierte cualquier tema en un",

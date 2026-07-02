@@ -2,8 +2,11 @@ import "dotenv/config";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { prisma } from "../lib/db";
+import { uploadAudioFile } from "../lib/storage";
+import { reportWorkerStatus } from "../lib/worker-status";
 import {
   authCheck,
+  authStatus,
   createNotebook,
   addUrlSource,
   addResearch,
@@ -34,6 +37,7 @@ async function withRetry<T>(
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 5000);
 const AUDIO_DIR = process.env.AUDIO_DIR ?? "public/audio";
 const PROJECT_ROOT = process.cwd();
+let lastStatusReportAt = 0;
 
 function log(msg: string) {
   const ts = new Date().toISOString();
@@ -146,8 +150,8 @@ async function processJob(job: {
   log(`Descargando audio a ${outPath}`);
   await downloadAudio(notebookId, outPath);
 
-  // Ruta pública servida por Next desde /public
-  const publicPath = `/${AUDIO_DIR.replace(/^public\//, "")}/${fileName}`;
+  // Ruta publica: local (/audio/...) o URL remota si STORAGE_DRIVER=s3.
+  const publicPath = await uploadAudioFile(outPath, fileName);
 
   // 6. Publicar
   await prisma.podcast.update({
@@ -159,6 +163,8 @@ async function processJob(job: {
 }
 
 async function tick() {
+  await refreshWorkerStatus();
+
   const job = await prisma.generationJob.findFirst({
     where: { status: "QUEUED" },
     orderBy: { createdAt: "asc" },
@@ -191,6 +197,7 @@ async function tick() {
 async function main() {
   log(`Worker iniciado. Sondeando cada ${POLL_MS}ms.`);
   log(`CLI: ${process.env.NLM_PATH}`);
+  await refreshWorkerStatus({ force: true });
   // Bucle de sondeo continuo
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -201,6 +208,28 @@ async function main() {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+async function refreshWorkerStatus({ force = false } = {}) {
+  if (!force && Date.now() - lastStatusReportAt < 60_000) return;
+  lastStatusReportAt = Date.now();
+
+  try {
+    const status = await authStatus();
+    await reportWorkerStatus({
+      status: "ONLINE",
+      authValid: status.valid,
+      message: status.valid
+        ? "Worker Windows conectado y autenticado."
+        : "Worker Windows conectado, pero NotebookLM no esta autenticado.",
+    });
+  } catch (err: any) {
+    await reportWorkerStatus({
+      status: "ONLINE",
+      authValid: false,
+      message: err?.message ?? "No se pudo verificar NotebookLM.",
+    }).catch(() => {});
+  }
 }
 
 main().catch((err) => {
