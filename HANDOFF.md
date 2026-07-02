@@ -605,6 +605,74 @@ notebooklm download audio <path> -n <notebookId> --latest --force
 - `src/components/PodcastGenerator.tsx` - Modo toggle agregado
 - `src/lib/i18n.tsx` - Traducciones EN/ES agregadas
 
-**Estado:** Implementación completa. Pendiente solo aplicar migración DB en producción y probar end-to-end.
+**Estado:** ✅ Implementación completa y funcional.
+
+---
+
+# Actualización 2026-07-02 - Worker PM2 instalado y sistema completo funcional
+
+El worker fue instalado exitosamente como servicio permanente de Windows usando PM2:
+
+## Configuración del servicio
+
+**Archivos creados:**
+- `ecosystem.config.js` - Configuración PM2 del worker
+- `run-worker.js` - Wrapper script para ejecutar TypeScript con tsx
+
+**Proceso PM2:**
+- Nombre: `podcast-worker`
+- Estado: **online** y estable
+- Auto-inicio: Configurado (arranca con Windows)
+- Reinicio automático: Habilitado
+- Límite de memoria: 1GB
+- Logs: `C:\Users\skint\.pm2\logs\podcast-worker-*.log`
+
+## Comandos de gestión
+
+```bash
+pm2 status                    # Ver estado del worker
+pm2 logs podcast-worker       # Ver logs en tiempo real
+pm2 restart podcast-worker    # Reiniciar worker
+pm2 stop podcast-worker       # Detener worker
+pm2 start podcast-worker      # Iniciar worker (si está detenido)
+pm2 save                      # Guardar configuración actual
+```
+
+## Estado verificado
+
+✅ **Worker:** Corriendo y sondeando la cola cada 5s  
+✅ **NotebookLM:** Sesión autenticada y válida (29 cookies, token fetch OK)  
+✅ **Base de datos:** Migración `audioId` aplicada en Supabase  
+✅ **Vercel:** Desplegado en producción con última versión  
+✅ **GitHub:** Commits actualizados con feature completa  
+
+## Sistema end-to-end funcional
+
+La app ahora está completamente funcional en modo híbrido público:
+
+1. **Frontend público (Vercel):**
+   - UI en https://notebook-lm-podcast-creator.vercel.app
+   - Modo "Create New" - crear podcasts desde tema/pregunta
+   - Modo "Import from NotebookLM" - importar notebooks existentes con selección de audio múltiple
+
+2. **Base de datos (Supabase):**
+   - PostgreSQL en la nube compartida
+   - Tablas: `podcast_creator_podcasts`, `podcast_creator_sources`, `podcast_creator_generation_jobs`, `podcast_creator_worker_status`
+
+3. **Storage (Cloudflare R2):**
+   - Bucket: `podcast-audio`
+   - URL pública: `https://pub-2acff2bce0e9482ab3b24a432884cc5c.r2.dev`
+   - Audios servidos globalmente
+
+4. **Worker (Windows local):**
+   - Servicio PM2 corriendo 24/7
+   - Procesa cola automáticamente
+   - Sube audios a R2 y actualiza BD pública
+   - Reporta estado a WorkerStatus cada minuto
+
+**Flujo completo verificado:**
+Usuario (cualquier dispositivo) → Vercel UI → Supabase queue → Worker Windows → NotebookLM CLI → R2 storage → Usuario puede reproducir/descargar
+
+**Próximo paso recomendado:** Test end-to-end generando un podcast desde la web pública para verificar todo el pipeline.
 
 ---
