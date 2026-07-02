@@ -116,6 +116,33 @@ El worker tambien actualiza `WorkerStatus` en Postgres. La UI publica usa `/api/
 5. Desplegar Next.js.
 6. En Windows, configurar el mismo `.env`, autenticar NotebookLM y ejecutar `npm run worker`.
 
+## Funciones principales
+
+### 1. Crear podcast desde tema
+- Escribe un tema o pregunta
+- Configura formato (deep-dive, brief, critique, debate)
+- Selecciona duración (short, default, long) e idioma
+- Opcionalmente proporciona URLs como fuentes
+- El worker investiga y genera el audio automáticamente
+
+### 2. Importar desde NotebookLM
+- Lista todos tus notebooks de NotebookLM
+- **Modo "Usar Audio Existente":**
+  - Selecciona entre múltiples audios disponibles
+  - Descarga rápida (~30 segundos)
+  - Ideal para aprovechar audios ya generados
+- **Modo "Generar Nuevo":**
+  - Crea nuevo audio con parámetros personalizados
+  - Permite múltiples versiones del mismo notebook
+  - Tarda ~10-20 minutos
+- Auto-selección inteligente según disponibilidad de audios
+
+### 3. Biblioteca de podcasts
+- Reproduce y descarga cualquier podcast
+- Contador de reproducciones
+- Interfaz bilingüe (EN/ES)
+- Borrar y reintentar podcasts fallidos
+
 ## Limitaciones actuales
 
 - No hay usuarios ni podcasts privados.

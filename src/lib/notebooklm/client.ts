@@ -240,13 +240,98 @@ export async function generateAudio(
   return runNlmJson<any>(args, { timeoutMs: DEFAULT_TIMEOUT_MS });
 }
 
-/** Descarga el audio más reciente del notebook a la ruta indicada. */
+export interface AudioArtifact {
+  id: string;
+  title: string;
+  type: string;
+  createdAt?: string;
+  updatedAt?: string;
+  status?: string;
+  format?: string;
+  length?: string;
+  language?: string;
+}
+
+/** Lista todos los audios disponibles en un notebook. */
+export async function listAudios(notebookId: string): Promise<AudioArtifact[]> {
+  try {
+    const data = await runNlmJson<any>(
+      ["artifact", "list", "--type", "audio", "-n", notebookId],
+      { timeoutMs: 15 * 1000 }
+    );
+    const artifacts = data?.artifacts ?? data ?? [];
+    return Array.isArray(artifacts) ? artifacts : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Verifica si existe audio listo en el notebook. */
+export async function checkAudioStatus(notebookId: string): Promise<{
+  exists: boolean;
+  ready: boolean;
+  status?: string;
+}> {
+  try {
+    const result = await runNlmJson<any>(["audio", "status", "-n", notebookId], {
+      timeoutMs: 10 * 1000,
+    });
+    return {
+      exists: result?.exists ?? false,
+      ready: result?.ready ?? false,
+      status: result?.status,
+    };
+  } catch {
+    // Si falla el comando, asumimos que no hay audio
+    return { exists: false, ready: false };
+  }
+}
+
+/**
+ * Descarga un audio del notebook a la ruta indicada.
+ * Si se especifica artifactId, descarga ese audio específico.
+ * Si no, descarga el más reciente.
+ */
 export async function downloadAudio(
   notebookId: string,
-  outPath: string
+  outPath: string,
+  artifactId?: string
 ): Promise<void> {
-  await runNlmJson(
-    ["download", "audio", outPath, "-n", notebookId, "--latest", "--force"],
-    { timeoutMs: 5 * 60 * 1000 }
-  );
+  const args = ["download", "audio", outPath, "-n", notebookId, "--force"];
+
+  if (artifactId) {
+    args.push("-a", artifactId);
+  } else {
+    args.push("--latest");
+  }
+
+  await runNlmJson(args, { timeoutMs: 5 * 60 * 1000 });
+}
+
+export interface NotebookSummary {
+  id: string;
+  title: string;
+  description?: string;
+  sourceCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Lista todos los notebooks del usuario. */
+export async function listNotebooks(): Promise<NotebookSummary[]> {
+  const data = await runNlmJson<any>(["list"], { timeoutMs: 30 * 1000 });
+  const notebooks = data?.notebooks ?? data ?? [];
+  return Array.isArray(notebooks) ? notebooks : [];
+}
+
+export interface NotebookDetail extends NotebookSummary {
+  sources?: NlmSource[];
+  shareUrl?: string;
+}
+
+/** Obtiene detalles de un notebook específico. */
+export async function getNotebook(notebookId: string): Promise<NotebookDetail> {
+  return runNlmJson<NotebookDetail>(["get", "-n", notebookId], {
+    timeoutMs: 10 * 1000,
+  });
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useSSE } from "@/hooks/useSSE";
 import ProgressTracker from "./ProgressTracker";
+import { NotebookImporter } from "./NotebookImporter";
 
 const FORMATS = ["deep-dive", "brief", "critique", "debate"];
 const LENGTHS = ["short", "default", "long"];
@@ -11,6 +12,7 @@ const LANGS = ["en", "es", "pt", "fr"];
 
 export default function PodcastGenerator() {
   const { t } = useI18n();
+  const [mode, setMode] = useState<"create" | "import">("create");
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState("deep-dive");
   const [length, setLength] = useState("default");
@@ -68,7 +70,28 @@ export default function PodcastGenerator() {
   return (
     <div>
       {!jobId && (
-        <form onSubmit={handleSubmit} className="card space-y-5">
+        <>
+          {/* Mode toggle */}
+          <div className="flex gap-2 mb-6">
+            <button
+              type="button"
+              className={mode === "create" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("create")}
+            >
+              {t("gen.modeCreate")}
+            </button>
+            <button
+              type="button"
+              className={mode === "import" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("import")}
+            >
+              {t("gen.modeImport")}
+            </button>
+          </div>
+
+          {/* Create mode */}
+          {mode === "create" && (
+            <form onSubmit={handleSubmit} className="card space-y-5">
           <div>
             <label className="label">{t("gen.topicLabel")}</label>
             <textarea
@@ -154,6 +177,13 @@ export default function PodcastGenerator() {
           </button>
           <p className="text-xs text-mute">{t("gen.hint")}</p>
         </form>
+          )}
+
+          {/* Import mode */}
+          {mode === "import" && (
+            <NotebookImporter onJobCreated={(jid) => setJobId(jid)} />
+          )}
+        </>
       )}
 
       {jobId && status && <ProgressTracker status={status} />}

@@ -14,6 +14,7 @@ import {
   waitSourcesReady,
   generateAudio,
   downloadAudio,
+  checkAudioStatus,
 } from "../lib/notebooklm/client";
 import { translateTitleBoth } from "../lib/translate";
 
@@ -98,62 +99,89 @@ async function processJob(job: {
     );
   }
 
-  // 1. Crear notebook
-  const notebookId = await createNotebook(`Podcast: ${podcast.topic}`);
-  await prisma.podcast.update({
-    where: { id: podcast.id },
-    data: { notebookId },
-  });
-  await updateJob(job.id, { stage: "research", progress: 20 });
-  log(`Notebook creado: ${notebookId}`);
+  // SMART RESUME: Verificar si ya existe notebook y audio
+  let notebookId = podcast.notebookId;
+  let audioReady = false;
 
-  // 2. Añadir fuentes
-  const urlSources = podcast.sources.filter((s) => s.kind === "url");
-  if (urlSources.length > 0) {
-    for (const s of urlSources) {
-      log(`Añadiendo fuente URL: ${s.value}`);
-      await withRetry(() => addUrlSource(notebookId, s.value), {
-        label: `source add ${s.value}`,
-      });
+  if (notebookId) {
+    log(`✓ Notebook ya existe: ${notebookId}`);
+    // Verificar si el audio ya está listo
+    const audioStatus = await checkAudioStatus(notebookId);
+    if (audioStatus.ready) {
+      log(`✓ Audio ya está listo, saltando a descarga...`);
+      audioReady = true;
+      await updateJob(job.id, { stage: "downloading", progress: 90 });
+    } else {
+      log(`⚠ Audio no está listo (status: ${audioStatus.status}), regenerando...`);
+      await updateJob(job.id, { stage: "generating", progress: 60 });
     }
   } else {
-    log(`Investigando en la web sobre: ${podcast.topic}`);
-    // La investigación web de NotebookLM a veces falla con errores de servidor
-    // transitorios (RPC IMPORT_RESEARCH); reintentamos con backoff.
-    await withRetry(() => addResearch(notebookId, podcast.topic), {
-      attempts: 3,
-      baseMs: 8000,
-      label: "add-research",
+    // 1. Crear notebook (solo si no existe)
+    log(`Creando nuevo notebook...`);
+    notebookId = await createNotebook(`Podcast: ${podcast.topic}`);
+    await prisma.podcast.update({
+      where: { id: podcast.id },
+      data: { notebookId },
     });
+    await updateJob(job.id, { stage: "research", progress: 20 });
+    log(`Notebook creado: ${notebookId}`);
+
+    // 2. Añadir fuentes
+    const urlSources = podcast.sources.filter((s) => s.kind === "url");
+    if (urlSources.length > 0) {
+      for (const s of urlSources) {
+        log(`Añadiendo fuente URL: ${s.value}`);
+        await withRetry(() => addUrlSource(notebookId, s.value), {
+          label: `source add ${s.value}`,
+        });
+      }
+    } else {
+      log(`Investigando en la web sobre: ${podcast.topic}`);
+      await withRetry(() => addResearch(notebookId, podcast.topic), {
+        attempts: 3,
+        baseMs: 8000,
+        label: "add-research",
+      });
+    }
+    await updateJob(job.id, { stage: "research", progress: 45 });
+
+    // 3. Limpiar fuentes con errores/duplicadas antes de generar
+    log("Limpiando fuentes con errores o duplicadas...");
+    await cleanSources(notebookId);
+
+    // 4. Esperar a que las fuentes estén listas
+    await waitSourcesReady(notebookId);
+    await updateJob(job.id, { stage: "generating", progress: 60 });
   }
-  await updateJob(job.id, { stage: "research", progress: 45 });
 
-  // 3. Limpiar fuentes con errores/duplicadas antes de generar
-  log("Limpiando fuentes con errores o duplicadas...");
-  await cleanSources(notebookId);
-
-  // 4. Esperar a que las fuentes estén listas
-  await waitSourcesReady(notebookId);
-  await updateJob(job.id, { stage: "generating", progress: 60 });
-
-  // 4. Generar el podcast (bloquea hasta completar)
-  log(`Generando audio (formato=${podcast.format}, duración=${podcast.length})...`);
-  await generateAudio(notebookId, {
-    format: podcast.format,
-    length: podcast.length,
-    language: podcast.language,
-    instructions: `Crea un podcast atractivo y bien estructurado sobre: ${podcast.topic}`,
-    retry: 2,
-  });
-  await updateJob(job.id, { stage: "downloading", progress: 90 });
+  // 5. Generar audio (solo si no está listo)
+  if (!audioReady) {
+    log(`Generando audio (formato=${podcast.format}, duración=${podcast.length})...`);
+    await generateAudio(notebookId, {
+      format: podcast.format,
+      length: podcast.length,
+      language: podcast.language,
+      instructions: `Crea un podcast atractivo y bien estructurado sobre: ${podcast.topic}`,
+      retry: 2,
+    });
+    await updateJob(job.id, { stage: "downloading", progress: 90 });
+  }
 
   // 5. Descargar el MP3
   const audioDirAbs = path.join(PROJECT_ROOT, AUDIO_DIR);
   await fs.mkdir(audioDirAbs, { recursive: true });
   const fileName = `${podcast.id}.mp3`;
   const outPath = path.join(audioDirAbs, fileName);
-  log(`Descargando audio a ${outPath}`);
-  await downloadAudio(notebookId, outPath);
+
+  // Si se especificó un audioId, descargar ese audio específico
+  // Si no, descargar el más reciente
+  if (podcast.audioId) {
+    log(`Descargando audio específico (${podcast.audioId}) a ${outPath}`);
+    await downloadAudio(notebookId, outPath, podcast.audioId);
+  } else {
+    log(`Descargando audio más reciente a ${outPath}`);
+    await downloadAudio(notebookId, outPath);
+  }
 
   // Ruta publica: local (/audio/...) o URL remota si STORAGE_DRIVER=s3.
   const publicPath = await uploadAudioFile(outPath, fileName);

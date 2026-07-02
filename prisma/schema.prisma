@@ -21,6 +21,7 @@ model Podcast {
   language    String   @default("es")
   status      String   @default("PENDING")
   notebookId  String?  @map("notebook_id")
+  audioId     String?  @map("audio_id")
   audioPath   String?  @map("audio_path")
   durationSec Int?     @map("duration_sec")
   plays       Int      @default(0)

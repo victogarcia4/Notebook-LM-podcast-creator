@@ -439,3 +439,172 @@ Archivos modificados:
 - `README.md` - Documentación actualizada
 
 ---
+
+# Actualización 2026-07-02 - Importación desde NotebookLM con selección de audio múltiple
+
+Se implementó la funcionalidad para **importar podcasts desde cualquier notebook de NotebookLM** del usuario, con soporte completo para selección de audios múltiples:
+
+## Funcionalidades implementadas
+
+### 1. Listar notebooks con sus audios
+- **GET `/api/notebooks`** - Lista todos los notebooks del usuario con sus audios disponibles
+- Cada notebook incluye array `audios[]` con todos los Audio Overviews generados
+- Muestra título, fecha de creación, y metadatos de cada audio
+
+### 2. Importar con dos modos
+**Modo "Usar Audio Existente":**
+- Lista todos los audios disponibles del notebook seleccionado
+- Usuario selecciona qué audio específico importar
+- Worker descarga ese audio exacto (~30 segundos)
+- Ideal para notebooks que ya tienen audio generado
+
+**Modo "Generar Nuevo":**
+- Permite crear un nuevo audio con parámetros personalizados (formato/duración/idioma)
+- Worker genera nuevo audio incluso si el notebook ya tiene otros
+- Permite múltiples versiones del mismo notebook (~10-20 minutos)
+
+### 3. Selección inteligente de modo
+- Si notebook tiene audios → modo predeterminado "Usar Existente"
+- Si solo hay 1 audio → se auto-selecciona
+- Si notebook no tiene audios → modo automático "Generar Nuevo"
+- Usuario puede cambiar entre modos libremente
+
+### 4. Re-importación permitida
+- Se puede importar el mismo notebook múltiples veces
+- Cada importación crea un `Podcast` separado con diferente `id`
+- Comparten el mismo `notebookId` pero pueden tener diferentes:
+  - `audioId` (audio específico seleccionado)
+  - `format`, `length`, `language` (si se generó nuevo)
+
+## Cambios técnicos
+
+### Base de datos
+- **Campo nuevo:** `Podcast.audioId` (String?, nullable)
+- Almacena el ID del artifact de audio específico a descargar
+- Si es `null`, el worker descarga el audio más reciente
+
+### Backend (`src/lib/notebooklm/client.ts`)
+```typescript
+// Nueva función para listar audios
+export async function listAudios(notebookId: string): Promise<AudioArtifact[]>
+// Comando CLI: artifact list --type audio -n <id> --json
+
+// Modificada para aceptar audioId opcional
+export async function downloadAudio(
+  notebookId: string,
+  outPath: string,
+  artifactId?: string  // NUEVO
+): Promise<void>
+// Si artifactId presente: -a <id>
+// Si no: --latest
+```
+
+### API Routes
+- **GET `/api/notebooks`** (NUEVO) - Enriquece notebooks con `audios[]` array
+- **POST `/api/podcasts/import`** (NUEVO) - Acepta parámetros:
+  - `notebookId` (requerido)
+  - `importMode`: `"existing"` | `"generate"`
+  - `audioId` (requerido si mode=existing)
+  - `title`, `topic` (del frontend)
+  - `format`, `length`, `language` (solo para mode=generate)
+
+### Worker (`src/workers/worker.ts`)
+```typescript
+// Lógica de descarga actualizada (línea ~175)
+if (podcast.audioId) {
+  // Descargar audio específico
+  await downloadAudio(notebookId, outPath, podcast.audioId);
+} else {
+  // Descargar el más reciente (comportamiento anterior)
+  await downloadAudio(notebookId, outPath);
+}
+```
+
+### Frontend (`src/components/`)
+- **`NotebookImporter.tsx`** (NUEVO) - Componente principal con:
+  - Lista de notebooks en grid
+  - Selector de modo (toggle "Usar Existente" / "Generar Nuevo")
+  - Lista seleccionable de audios disponibles
+  - Formulario de parámetros para generación
+  - Auto-selección inteligente basada en disponibilidad
+- **`NotebookCard.tsx`** (NUEVO) - Tarjeta de notebook con badge "✓ AUDIO READY"
+- **`PodcastGenerator.tsx`** (MODIFICADO) - Toggle entre "Create New" e "Import from NotebookLM"
+
+### i18n (`src/lib/i18n.tsx`)
+Nuevas claves de traducción (EN/ES):
+- `gen.modeCreate` / `gen.modeImport`
+- `import.modeLabel`, `import.useExisting`, `import.generateNew`
+- `import.selectAudio`, `import.audioWillDownload`, `import.willGenerate`
+- `import.hasAudioTitle`, `import.hasAudioDesc`, `import.noAudioDesc`
+- `import.created`
+
+## Migración de base de datos pendiente
+
+**IMPORTANTE:** Antes de usar en producción, aplicar migración:
+
+```bash
+# Opción 1: Push directo (desarrollo)
+npx prisma db push
+
+# Opción 2: SQL manual (producción Supabase)
+ALTER TABLE podcast_creator_podcasts ADD COLUMN audio_id TEXT;
+```
+
+Luego regenerar cliente:
+```bash
+npx prisma generate
+```
+
+## Flujo de usuario típico
+
+1. Usuario hace clic en **"Importar de NotebookLM"**
+2. La app lista todos sus notebooks con conteo de audios
+3. Usuario selecciona un notebook
+4. **Si tiene audios:**
+   - Se muestra lista de audios con títulos y fechas
+   - Usuario selecciona uno → "Import Podcast" → ~30s descarga
+   - O cambia a "Generar Nuevo" → configura parámetros → ~10-20min
+5. **Si no tiene audios:**
+   - Modo automático "Generar Nuevo"
+   - Usuario configura formato/duración/idioma → ~10-20min
+6. Podcast aparece en biblioteca para reproducir/compartir
+
+## Beneficios
+
+✅ **Reutilización de trabajo:** Aprovecha audios ya generados en NotebookLM  
+✅ **Múltiples versiones:** Permite importar/generar varias versiones del mismo contenido  
+✅ **Flexibilidad:** Usuario decide entre velocidad (usar existente) o personalización (generar nuevo)  
+✅ **UX clara:** Mensajes explícitos sobre qué pasará y cuánto tardará  
+✅ **Bilingüe:** Toda la UI soporta EN/ES
+
+## Comandos CLI de NotebookLM usados
+
+```bash
+# Listar todos los artifacts de audio
+notebooklm artifact list --type audio -n <notebookId> --json
+
+# Descargar audio específico
+notebooklm download audio <path> -n <notebookId> -a <artifactId> --force
+
+# Descargar el más reciente (comportamiento anterior)
+notebooklm download audio <path> -n <notebookId> --latest --force
+```
+
+## Archivos modificados/creados
+
+**Backend:**
+- `prisma/schema.prisma` - Campo `audioId` agregado a modelo `Podcast`
+- `src/lib/notebooklm/client.ts` - Funciones `listAudios()` y `downloadAudio()` modificada
+- `src/app/api/notebooks/route.ts` - Endpoint NUEVO
+- `src/app/api/podcasts/import/route.ts` - Endpoint NUEVO
+- `src/workers/worker.ts` - Lógica de descarga con audioId opcional
+
+**Frontend:**
+- `src/components/NotebookImporter.tsx` - Componente NUEVO
+- `src/components/NotebookCard.tsx` - Componente NUEVO
+- `src/components/PodcastGenerator.tsx` - Modo toggle agregado
+- `src/lib/i18n.tsx` - Traducciones EN/ES agregadas
+
+**Estado:** Implementación completa. Pendiente solo aplicar migración DB en producción y probar end-to-end.
+
+---
