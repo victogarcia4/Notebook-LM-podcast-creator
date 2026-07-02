@@ -22,10 +22,6 @@ export default function PodcastGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Import only works when running locally (needs NotebookLM CLI access)
-  const isLocalhost = typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
   const status = useSSE(jobId);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -75,35 +71,23 @@ export default function PodcastGenerator() {
     <div>
       {!jobId && (
         <>
-          {/* Mode toggle - only show import on localhost */}
-          {isLocalhost && (
-            <div className="flex gap-2 mb-6">
-              <button
-                type="button"
-                className={mode === "create" ? "btn-primary" : "btn-outline"}
-                onClick={() => setMode("create")}
-              >
-                {t("gen.modeCreate")}
-              </button>
-              <button
-                type="button"
-                className={mode === "import" ? "btn-primary" : "btn-outline"}
-                onClick={() => setMode("import")}
-              >
-                {t("gen.modeImport")}
-              </button>
-            </div>
-          )}
-
-          {/* Info banner when import is disabled */}
-          {!isLocalhost && (
-            <div className="mb-6 border border-line bg-elevated px-4 py-3">
-              <p className="text-xs text-dim">
-                <span className="font-mono text-accent">ℹ</span> Import from NotebookLM is only available when running locally at{" "}
-                <code className="text-fg">localhost:3000</code>
-              </p>
-            </div>
-          )}
+          {/* Mode toggle */}
+          <div className="flex gap-2 mb-6">
+            <button
+              type="button"
+              className={mode === "create" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("create")}
+            >
+              {t("gen.modeCreate")}
+            </button>
+            <button
+              type="button"
+              className={mode === "import" ? "btn-primary" : "btn-outline"}
+              onClick={() => setMode("import")}
+            >
+              {t("gen.modeImport")}
+            </button>
+          </div>
 
           {/* Create mode */}
           {mode === "create" && (

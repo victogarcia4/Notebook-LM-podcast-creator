@@ -28,9 +28,22 @@ export function NotebookImporter({ onJobCreated }: Props) {
   const [importing, setImporting] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
 
+  // Manual import mode (for production/Vercel)
+  const [manualNotebookId, setManualNotebookId] = useState("");
+  const [notebookTitle, setNotebookTitle] = useState("");
+
+  // Detect if running on localhost
+  const isLocalhost = typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
   useEffect(() => {
-    fetchNotebooks();
-  }, []);
+    // Only fetch notebooks list when running on localhost (has CLI access)
+    if (isLocalhost) {
+      fetchNotebooks();
+    } else {
+      setLoading(false);
+    }
+  }, [isLocalhost]);
 
   // Auto-select import mode and audio when notebook changes
   useEffect(() => {
@@ -113,16 +126,44 @@ export function NotebookImporter({ onJobCreated }: Props) {
   }
 
   async function handleImport() {
-    if (!selectedNotebook) return;
+    // For manual mode (production): use manualNotebookId
+    // For list mode (localhost): use selectedNotebook
+    const notebookId = isLocalhost ? selectedNotebook : manualNotebookId.trim();
 
-    // Find the selected notebook to get its title and description
-    const notebook = notebooks.find((nb) => nb.id === selectedNotebook);
-    if (!notebook) return;
-
-    // Validate: if mode is "existing", must have selected an audioId
-    if (importMode === "existing" && !selectedAudioId) {
-      setError("Please select an audio file");
+    if (!notebookId) {
+      setError(isLocalhost ? "Please select a notebook" : "Please enter a Notebook ID");
       return;
+    }
+
+    // Validate notebook ID format (basic validation)
+    if (!isLocalhost && !/^[a-zA-Z0-9_-]{8,}$/.test(notebookId)) {
+      setError("Invalid Notebook ID format. Expected format: abc123xyz-def456");
+      return;
+    }
+
+    // For localhost: find the selected notebook to get its title and description
+    // For production: use manual title or generate one
+    let title: string;
+    let topic: string;
+
+    if (isLocalhost) {
+      const notebook = notebooks.find((nb) => nb.id === notebookId);
+      if (!notebook) {
+        setError("Notebook not found");
+        return;
+      }
+      title = notebook.title;
+      topic = notebook.description || notebook.title;
+
+      // Validate: if mode is "existing", must have selected an audioId
+      if (importMode === "existing" && !selectedAudioId) {
+        setError("Please select an audio file");
+        return;
+      }
+    } else {
+      // Manual mode: use provided title or generate one
+      title = notebookTitle.trim() || `Imported Notebook ${notebookId.slice(0, 8)}`;
+      topic = title;
     }
 
     setImporting(true);
@@ -132,11 +173,12 @@ export function NotebookImporter({ onJobCreated }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          notebookId: selectedNotebook,
-          title: notebook.title,
-          topic: notebook.description || notebook.title,
-          importMode,
-          audioId: importMode === "existing" ? selectedAudioId : null,
+          notebookId,
+          title,
+          topic,
+          // Manual mode always uses "generate" (can't check for existing audio)
+          importMode: isLocalhost ? importMode : "generate",
+          audioId: isLocalhost && importMode === "existing" ? selectedAudioId : null,
           format,
           length,
           language,
@@ -225,6 +267,109 @@ export function NotebookImporter({ onJobCreated }: Props) {
     );
   }
 
+  // Manual import mode (production)
+  if (!isLocalhost) {
+    return (
+      <div className="card">
+        <h3 className="font-display text-lg mb-4">Import from NotebookLM</h3>
+
+        <div className="mb-4 p-3 border border-line bg-bg-subtle rounded text-sm">
+          <p className="text-dim mb-2">
+            <span className="font-mono text-accent">ℹ</span> To import a notebook:
+          </p>
+          <ol className="list-decimal list-inside space-y-1 text-dim ml-4">
+            <li>Go to <a href="https://notebooklm.google.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">NotebookLM</a></li>
+            <li>Open your notebook (under "My notebooks")</li>
+            <li>Copy the ID from the URL: <code className="text-xs bg-elevated px-1">notebooklm.google.com/notebook/<span className="text-accent">YOUR_ID_HERE</span></code></li>
+            <li>Paste it below</li>
+          </ol>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="label">Notebook ID</label>
+            <input
+              type="text"
+              className="input font-mono text-sm"
+              placeholder="e.g., abc123xyz-def456"
+              value={manualNotebookId}
+              onChange={(e) => setManualNotebookId(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="label">Podcast Title (optional)</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="Leave empty to use notebook title"
+              value={notebookTitle}
+              onChange={(e) => setNotebookTitle(e.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="label">Format</label>
+              <select
+                className="input"
+                value={format}
+                onChange={(e) => setFormat(e.target.value)}
+              >
+                <option value="deep-dive">Deep Dive</option>
+                <option value="brief">Brief</option>
+                <option value="critique">Critique</option>
+                <option value="debate">Debate</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Length</label>
+              <select
+                className="input"
+                value={length}
+                onChange={(e) => setLength(e.target.value)}
+              >
+                <option value="short">Short</option>
+                <option value="default">Normal</option>
+                <option value="long">Long</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Language</label>
+              <select
+                className="input"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="pt">Português</option>
+                <option value="fr">Français</option>
+              </select>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 border border-red-500 bg-red-500/10 rounded">
+              <p className="text-sm text-red-500">{error}</p>
+            </div>
+          )}
+
+          <button
+            className="btn-primary w-full"
+            onClick={handleImport}
+            disabled={importing}
+          >
+            {importing ? "Importing..." : "Import Podcast"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Visual list mode (localhost only)
   return (
     <div>
       <h3 className="font-display text-xl mb-4">Select Notebook</h3>
