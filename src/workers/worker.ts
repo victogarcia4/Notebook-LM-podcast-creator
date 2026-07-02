@@ -10,6 +10,7 @@ import {
   createNotebook,
   addUrlSource,
   addResearch,
+  cleanSources,
   waitSourcesReady,
   generateAudio,
   downloadAudio,
@@ -127,7 +128,11 @@ async function processJob(job: {
   }
   await updateJob(job.id, { stage: "research", progress: 45 });
 
-  // 3. Esperar a que las fuentes estén listas
+  // 3. Limpiar fuentes con errores/duplicadas antes de generar
+  log("Limpiando fuentes con errores o duplicadas...");
+  await cleanSources(notebookId);
+
+  // 4. Esperar a que las fuentes estén listas
   await waitSourcesReady(notebookId);
   await updateJob(job.id, { stage: "generating", progress: 60 });
 

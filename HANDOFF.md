@@ -388,3 +388,54 @@ Con esto, cuando el worker Windows genere podcasts, subirá los MP3 a R2 y guard
 **Importante:** No arrancar el worker para uso público hasta configurar R2 en Vercel, porque cualquier podcast generado con `STORAGE_DRIVER=local` quedaría con rutas `/audio/...` que Vercel no puede servir.
 
 ---
+
+# Actualización 2026-07-02 - Auto-limpieza de fuentes y worker como servicio
+
+Se añadieron dos mejoras críticas para producción:
+
+## 1. Auto-limpieza de fuentes corruptas
+
+**Problema:** A veces la generación de audio se retrasa porque algunas fuentes no se cargan correctamente (corruptas, bloqueadas, etc.).
+
+**Solución:** El worker ahora ejecuta `cleanSources()` automáticamente antes de generar audio. Este comando elimina:
+- Fuentes duplicadas
+- Fuentes con errores
+- Fuentes bloqueadas por permisos
+
+**Flujo actualizado:**
+```
+Añadir fuentes → Limpiar fuentes malas → Esperar fuentes buenas → Generar audio
+```
+
+Esto acelera la generación al eliminar fuentes problemáticas que causarían timeouts o errores.
+
+## 2. Worker como servicio permanente Windows
+
+**Problema:** El worker debe correr 24/7 para procesar podcasts creados desde cualquier dispositivo (phone, tablet, etc.), no solo cuando se ejecuta manualmente `npm run worker`.
+
+**Solución:** Script de instalación `setup-worker-service.ps1` que:
+1. Instala PM2 (process manager para Node.js)
+2. Configura el worker como servicio de Windows
+3. Auto-inicia el worker al arrancar Windows
+4. Reinicia automáticamente si falla
+
+**Uso:**
+```powershell
+.\setup-worker-service.ps1
+```
+
+**Comandos útiles:**
+- `pm2 status` - Ver estado
+- `pm2 logs podcast-worker` - Ver logs
+- `pm2 restart podcast-worker` - Reiniciar
+- `pm2 stop podcast-worker` - Detener
+
+**Beneficio:** Una vez configurado, el usuario puede crear podcasts desde su teléfono/cualquier lugar vía la web pública en Vercel, y el worker Windows (corriendo 24/7) los procesará automáticamente.
+
+Archivos modificados:
+- `src/lib/notebooklm/client.ts` - Añadida función `cleanSources()`
+- `src/workers/worker.ts` - Integrada limpieza automática antes de `waitSourcesReady()`
+- `setup-worker-service.ps1` - Script de instalación del servicio
+- `README.md` - Documentación actualizada
+
+---

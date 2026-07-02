@@ -182,6 +182,16 @@ export async function listSources(notebookId: string): Promise<NlmSource[]> {
   return Array.isArray(sources) ? sources : [];
 }
 
+/**
+ * Limpia fuentes duplicadas, con errores o bloqueadas del notebook.
+ * Útil antes de generar audio para evitar delays por fuentes corruptas.
+ */
+export async function cleanSources(notebookId: string): Promise<void> {
+  await runNlmJson(["source", "clean", "-n", notebookId, "-y"], {
+    timeoutMs: 60 * 1000,
+  });
+}
+
 /** Espera (con sondeo) a que todas las fuentes estén en estado ready. */
 export async function waitSourcesReady(
   notebookId: string,

@@ -52,7 +52,26 @@ npm run db:push
 npm run build
 ```
 
-Para procesar jobs:
+### Worker como servicio permanente (recomendado para producción)
+
+Para que el worker corra 24/7 en segundo plano y se auto-inicie con Windows:
+
+```powershell
+.\setup-worker-service.ps1
+```
+
+Esto instala PM2 y configura el worker como servicio. Comandos útiles:
+
+```bash
+pm2 status                    # Ver estado del worker
+pm2 logs podcast-worker       # Ver logs en tiempo real
+pm2 restart podcast-worker    # Reiniciar worker
+pm2 stop podcast-worker       # Detener worker
+```
+
+### Worker manual (desarrollo)
+
+Para procesar jobs manualmente con autoreload:
 
 ```bash
 npm run worker
