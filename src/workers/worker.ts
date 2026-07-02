@@ -131,13 +131,13 @@ async function processJob(job: {
     if (urlSources.length > 0) {
       for (const s of urlSources) {
         log(`Añadiendo fuente URL: ${s.value}`);
-        await withRetry(() => addUrlSource(notebookId, s.value), {
+        await withRetry(() => addUrlSource(notebookId!, s.value), {
           label: `source add ${s.value}`,
         });
       }
     } else {
       log(`Investigando en la web sobre: ${podcast.topic}`);
-      await withRetry(() => addResearch(notebookId, podcast.topic), {
+      await withRetry(() => addResearch(notebookId!, podcast.topic), {
         attempts: 3,
         baseMs: 8000,
         label: "add-research",
@@ -147,17 +147,17 @@ async function processJob(job: {
 
     // 3. Limpiar fuentes con errores/duplicadas antes de generar
     log("Limpiando fuentes con errores o duplicadas...");
-    await cleanSources(notebookId);
+    await cleanSources(notebookId!);
 
     // 4. Esperar a que las fuentes estén listas
-    await waitSourcesReady(notebookId);
+    await waitSourcesReady(notebookId!);
     await updateJob(job.id, { stage: "generating", progress: 60 });
   }
 
   // 5. Generar audio (solo si no está listo)
   if (!audioReady) {
     log(`Generando audio (formato=${podcast.format}, duración=${podcast.length})...`);
-    await generateAudio(notebookId, {
+    await generateAudio(notebookId!, {
       format: podcast.format,
       length: podcast.length,
       language: podcast.language,
@@ -177,10 +177,10 @@ async function processJob(job: {
   // Si no, descargar el más reciente
   if (podcast.audioId) {
     log(`Descargando audio específico (${podcast.audioId}) a ${outPath}`);
-    await downloadAudio(notebookId, outPath, podcast.audioId);
+    await downloadAudio(notebookId!, outPath, podcast.audioId);
   } else {
     log(`Descargando audio más reciente a ${outPath}`);
-    await downloadAudio(notebookId, outPath);
+    await downloadAudio(notebookId!, outPath);
   }
 
   // Ruta publica: local (/audio/...) o URL remota si STORAGE_DRIVER=s3.
