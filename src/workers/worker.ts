@@ -248,7 +248,10 @@ async function refreshWorkerStatus({ force = false } = {}) {
   lastStatusReportAt = Date.now();
 
   try {
+    log("🔍 Verificando estado de autenticación de NotebookLM...");
     const status = await authStatus();
+    log(`✓ Auth status: ${status.valid ? "VÁLIDO" : "INVÁLIDO"}`);
+
     await reportWorkerStatus({
       status: "ONLINE",
       authValid: status.valid,
@@ -256,12 +259,21 @@ async function refreshWorkerStatus({ force = false } = {}) {
         ? "Worker Windows conectado y autenticado."
         : "Worker Windows conectado, pero NotebookLM no esta autenticado.",
     });
+
+    log(`✓ WorkerStatus actualizado en BD: authValid=${status.valid}`);
   } catch (err: any) {
-    await reportWorkerStatus({
-      status: "ONLINE",
-      authValid: false,
-      message: err?.message ?? "No se pudo verificar NotebookLM.",
-    }).catch(() => {});
+    log(`❌ Error verificando auth status: ${err?.message}`);
+
+    try {
+      await reportWorkerStatus({
+        status: "ONLINE",
+        authValid: false,
+        message: err?.message ?? "No se pudo verificar NotebookLM.",
+      });
+      log("✓ WorkerStatus actualizado con error");
+    } catch (dbErr: any) {
+      log(`❌ Error actualizando BD: ${dbErr?.message}`);
+    }
   }
 }
 
