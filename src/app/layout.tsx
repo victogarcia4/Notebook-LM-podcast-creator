@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
+import { I18nProvider } from "@/lib/i18n";
+import Header from "@/components/Header";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Podcast Creator — NotebookLM",
-  description: "Genera podcasts con IA a partir de un tema o pregunta.",
+  title: "Notebook LM Podcast Creator",
+  description:
+    "Generate podcasts with AI from a topic or question, powered by NotebookLM.",
 };
 
 export default function RootLayout({
@@ -13,28 +16,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
-        <header className="border-b border-slate-800">
-          <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-              <span className="text-2xl">🎙️</span>
-              <span>Podcast Creator</span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <Link href="/" className="btn-ghost">
-                Crear
-              </Link>
-              <Link href="/library" className="btn-ghost">
-                Biblioteca
-              </Link>
-            </div>
-          </nav>
-        </header>
-        <main className="mx-auto max-w-5xl px-4 py-10">{children}</main>
-        <footer className="mx-auto max-w-5xl px-4 py-10 text-center text-sm text-slate-500">
-          Generado con NotebookLM · MVP local
-        </footer>
+        <I18nProvider>
+          <Header />
+          <main className="mx-auto max-w-6xl px-4 py-12">{children}</main>
+          <SiteFooter />
+        </I18nProvider>
       </body>
     </html>
   );

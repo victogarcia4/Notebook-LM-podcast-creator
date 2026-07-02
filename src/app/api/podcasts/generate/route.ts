@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
     (body.title ?? "").toString().trim() ||
     topic.slice(0, 80) + (topic.length > 80 ? "…" : "");
 
+  // La traducción de títulos (EN/ES) la hace el worker al procesar el job,
+  // para que este endpoint responda al instante y la barra de progreso
+  // aparezca de inmediato.
   const podcast = await prisma.podcast.create({
     data: {
       title,

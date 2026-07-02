@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useI18n } from "@/lib/i18n";
 
 export default function AudioPlayer({
   src,
@@ -9,6 +10,7 @@ export default function AudioPlayer({
   src: string;
   podcastId: string;
 }) {
+  const { t } = useI18n();
   const counted = useRef(false);
 
   function handlePlay() {
@@ -26,10 +28,10 @@ export default function AudioPlayer({
         onPlay={handlePlay}
         preload="metadata"
       >
-        Tu navegador no soporta el elemento de audio.
+        <track kind="captions" />
       </audio>
-      <a href={src} download className="btn-ghost mt-4">
-        ⬇️ Descargar MP3
+      <a href={src} download className="btn-outline mt-4">
+        ↓ {t("detail.download")}
       </a>
     </div>
   );

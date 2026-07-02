@@ -86,6 +86,38 @@ export async function authCheck(): Promise<boolean> {
   }
 }
 
+/**
+ * Comprueba el estado REAL de la sesión con `auth check --test` (hace una
+ * llamada de token real). Captura la salida aunque el CLI termine con código
+ * distinto de cero, y decide validez según el texto.
+ */
+export async function authStatus(): Promise<{ valid: boolean }> {
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      NLM_PATH,
+      ["--quiet", "auth", "check", "--test"],
+      { timeout: 60_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
+    );
+    return { valid: isAuthOutputValid((stdout ?? "") + (stderr ?? "")) };
+  } catch (err: any) {
+    const out = (err?.stdout?.toString() ?? "") + (err?.stderr?.toString() ?? "");
+    return { valid: isAuthOutputValid(out) };
+  }
+}
+
+function isAuthOutputValid(output: string): boolean {
+  const text = output.toLowerCase();
+  if (
+    text.includes("token fetch failed") ||
+    text.includes("expired or invalid") ||
+    text.includes("run 'notebooklm login'")
+  ) {
+    return false;
+  }
+  // Válida solo si la prueba de token pasó explícitamente.
+  return text.includes("authentication is valid") || text.includes("token fetch");
+}
+
 /** Crea un notebook y devuelve su id. */
 export async function createNotebook(title: string): Promise<string> {
   const data = await runNlmJson<any>(["create", title]);

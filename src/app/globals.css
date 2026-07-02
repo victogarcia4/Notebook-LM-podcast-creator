@@ -2,30 +2,125 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Sistema de diseño extraído de Youtube.html — editorial oscuro */
 :root {
+  --bg: #080808;
+  --bg-elevated: #111111;
+  --fg: #f5f5f5;
+  --fg-dim: #888888;
+  --fg-mute: #555555;
+  --accent: #ff2a2a;
+  --yellow: #e5ff00;
+  --blue: #2b6fff;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
   color-scheme: dark;
 }
 
-body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Space Grotesk", sans-serif;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar {
+  width: 6px;
+}
+body::-webkit-scrollbar-track {
+  background: #000;
+}
+body::-webkit-scrollbar-thumb {
+  background: var(--accent);
+}
+
+/* Grano de película animado (identidad visual del tema) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 0.4s steps(1) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-5%, -5%); }
+  40% { transform: translate(-10%, 5%); }
+  60% { transform: translate(5%, -10%); }
+  80% { transform: translate(-5%, 10%); }
+  100% { transform: translate(10%, 0); }
+}
+
+.font-display {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+.font-mono {
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Componentes */
 .card {
-  @apply rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg;
+  @apply border border-line bg-elevated p-6;
+  border-radius: 0;
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-medium text-white transition hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 bg-accent px-6 py-3 font-mono text-xs font-bold uppercase tracking-widest text-black transition-colors;
+  border-radius: 0;
+}
+.btn-primary:hover {
+  background: var(--fg);
+}
+.btn-primary:disabled {
+  @apply cursor-not-allowed opacity-50;
 }
 
-.btn-ghost {
-  @apply inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800;
+.btn-outline {
+  @apply inline-flex items-center gap-2 border border-line-strong bg-transparent px-5 py-2.5 font-mono text-xs uppercase tracking-widest text-fg transition-colors;
+  border-radius: 0;
+}
+.btn-outline:hover {
+  background: var(--fg);
+  color: #000;
 }
 
 .input {
-  @apply w-full rounded-xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition focus:border-brand-light;
+  @apply w-full border border-line bg-black/60 px-4 py-3 text-fg placeholder-mute outline-none transition-colors;
+  border-radius: 0;
+}
+.input:focus {
+  border-color: var(--accent);
 }
 
 .label {
-  @apply mb-1.5 block text-sm font-medium text-slate-300;
+  @apply mb-2 block font-mono text-xs uppercase tracking-widest text-dim;
+}
+
+/* Eyebrow: etiqueta mono con línea previa */
+.eyebrow {
+  @apply inline-flex items-center gap-3 font-mono text-xs uppercase tracking-widest;
+  color: var(--accent);
+}
+.eyebrow::before {
+  content: "";
+  width: 36px;
+  height: 1px;
+  background: currentColor;
 }

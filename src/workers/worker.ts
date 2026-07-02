@@ -11,6 +11,25 @@ import {
   generateAudio,
   downloadAudio,
 } from "../lib/notebooklm/client";
+import { translateTitleBoth } from "../lib/translate";
+
+/** Reintenta una operación async con backoff. */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  { attempts = 3, baseMs = 4000, label = "op" } = {}
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      log(`⚠ ${label} falló (intento ${i}/${attempts}): ${(err as Error).message}`);
+      if (i < attempts) await sleep(baseMs * i);
+    }
+  }
+  throw lastErr;
+}
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 5000);
 const AUDIO_DIR = process.env.AUDIO_DIR ?? "public/audio";
@@ -53,6 +72,19 @@ async function processJob(job: {
     data: { status: "GENERATING" },
   });
 
+  // Traduce el título a EN/ES para las tarjetas (no bloquea el flujo si falla).
+  if (!podcast.titleEn || !podcast.titleEs) {
+    try {
+      const { titleEn, titleEs } = await translateTitleBoth(podcast.title);
+      await prisma.podcast.update({
+        where: { id: podcast.id },
+        data: { titleEn, titleEs },
+      });
+    } catch {
+      /* la traducción es opcional */
+    }
+  }
+
   // 0. Verificar autenticación
   const authed = await authCheck();
   if (!authed) {
@@ -75,11 +107,19 @@ async function processJob(job: {
   if (urlSources.length > 0) {
     for (const s of urlSources) {
       log(`Añadiendo fuente URL: ${s.value}`);
-      await addUrlSource(notebookId, s.value);
+      await withRetry(() => addUrlSource(notebookId, s.value), {
+        label: `source add ${s.value}`,
+      });
     }
   } else {
     log(`Investigando en la web sobre: ${podcast.topic}`);
-    await addResearch(notebookId, podcast.topic);
+    // La investigación web de NotebookLM a veces falla con errores de servidor
+    // transitorios (RPC IMPORT_RESEARCH); reintentamos con backoff.
+    await withRetry(() => addResearch(notebookId, podcast.topic), {
+      attempts: 3,
+      baseMs: 8000,
+      label: "add-research",
+    });
   }
   await updateJob(job.id, { stage: "research", progress: 45 });
 

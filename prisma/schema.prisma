@@ -13,6 +13,9 @@ datasource db {
 model Podcast {
   id          String   @id @default(cuid())
   title       String
+  // Títulos traducidos para mostrar en la tarjeta según el idioma del toggle.
+  titleEn     String?
+  titleEs     String?
   topic       String
   // deep-dive | brief | critique | debate
   format      String   @default("deep-dive")

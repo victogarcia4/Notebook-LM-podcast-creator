@@ -1,43 +1,45 @@
-import { prisma } from "@/lib/db";
-import PodcastCard from "@/components/PodcastCard";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n";
+import PodcastCard, { PodcastSummary } from "@/components/PodcastCard";
 
-export default async function LibraryPage() {
-  const podcasts = await prisma.podcast.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+export default function LibraryPage() {
+  const { t } = useI18n();
+  const [podcasts, setPodcasts] = useState<PodcastSummary[] | null>(null);
+
+  const load = () => {
+    fetch("/api/podcasts", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setPodcasts(d.podcasts ?? []))
+      .catch(() => setPodcasts([]));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const count = podcasts?.length ?? 0;
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Biblioteca</h1>
-        <span className="text-sm text-slate-500">
-          {podcasts.length} podcast{podcasts.length === 1 ? "" : "s"}
-        </span>
+      <div className="mb-8 flex items-end justify-between border-b border-line pb-4">
+        <h1 className="font-display text-4xl">{t("library.title")}</h1>
+        {podcasts && (
+          <span className="font-mono text-xs uppercase tracking-widest text-dim">
+            {count} {count === 1 ? t("library.one") : t("library.many")}
+          </span>
+        )}
       </div>
 
-      {podcasts.length === 0 ? (
-        <div className="card text-center text-slate-400">
-          Todavía no hay podcasts. ¡Crea el primero!
-        </div>
+      {podcasts === null ? (
+        <div className="card text-dim">{t("detail.loading")}</div>
+      ) : count === 0 ? (
+        <div className="card text-dim">{t("library.empty")}</div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {podcasts.map((p) => (
-            <PodcastCard
-              key={p.id}
-              podcast={{
-                id: p.id,
-                title: p.title,
-                topic: p.topic,
-                format: p.format,
-                language: p.language,
-                status: p.status,
-                plays: p.plays,
-                createdAt: p.createdAt,
-              }}
-            />
+            <PodcastCard key={p.id} podcast={p} onChanged={load} />
           ))}
         </div>
       )}

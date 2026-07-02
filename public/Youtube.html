@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KILBURN — Tech Reviews Without the Marketing Filter</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* Registered custom property for smooth color transitions */
+  @property --section-accent {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #ff2a2a;
+  }
+
+  :root {
+    --bg: #080808;
+    --bg-elevated: #111111;
+    --fg: #f5f5f5;
+    --fg-dim: #888888;
+    --fg-mute: #555555;
+    --accent: #ff2a2a;
+    --yellow: #e5ff00;
+    --blue: #2b6fff;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.18);
+    --section-accent: #ff2a2a;
+  }
+
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    transition: --section-accent 0.7s ease;
+  }
+  body::-webkit-scrollbar { width: 6px; }
+  body::-webkit-scrollbar-track { background: #000; }
+  body::-webkit-scrollbar-thumb { background: var(--section-accent); }
+
+  .font-display {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    font-variation-settings: "wdth" 92;
+    letter-spacing: -0.035em;
+    line-height: 0.92;
+  }
+  .font-mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+
+  /* Animated film grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: -10%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.08;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grain 0.4s steps(1) infinite;
+  }
+  @keyframes grain {
+    0% { transform: translate(0,0); }
+    20% { transform: translate(-5%,-5%); }
+    40% { transform: translate(-10%,5%); }
+    60% { transform: translate(5%,-10%); }
+    80% { transform: translate(-5%,10%); }
+    100% { transform: translate(0,0); }
+  }
+
+  /* Hero cinematic frame */
+  .cinematic-frame { position: relative; overflow: hidden; background: #000; isolation: isolate; }
+  .cinematic-frame > img {
+    transition: transform 0.6s cubic-bezier(0.4,0,0.2,1), filter 0.4s;
+    will-change: transform;
+  }
+  .cinematic-frame:hover > img {
+    filter: brightness(1.05) saturate(1.15) contrast(1.05);
+    animation: cinematic-pan 14s ease-in-out infinite alternate;
+  }
+  @keyframes cinematic-pan {
+    0% { transform: scale(1.04) translate(0,0); }
+    100% { transform: scale(1.12) translate(-2.5%,-1.5%); }
+  }
+
+  .scan-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.3s; z-index: 4;
+  }
+  .cinematic-frame:hover .scan-overlay { opacity: 1; }
+  .scan-overlay::before {
+    content: ''; position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(to right, transparent, var(--accent), transparent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: scan-line 3s linear infinite;
+  }
+  @keyframes scan-line {
+    0% { top: 0%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .vignette::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%);
+    z-index: 3;
+  }
+
+  /* Live indicator */
+  .live-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--section-accent);
+    box-shadow: 0 0 0 0 var(--section-accent);
+    animation: live-pulse 1.8s ease-out infinite;
+    transition: background 0.6s, box-shadow 0.6s;
+  }
+  @keyframes live-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,42,42,0.7); }
+    70% { box-shadow: 0 0 0 14px rgba(255,42,42,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,42,42,0); }
+  }
+
+  /* Video cards */
+  .video-card { cursor: pointer; }
+  .video-card.shuffling { animation: shuffle-in 0.45s cubic-bezier(0.4,0,0.2,1) both; }
+  @keyframes shuffle-in {
+    0% { opacity: 0; transform: translateY(24px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .video-card-thumb {
+    position: relative; overflow: hidden; background: #000; aspect-ratio: 16/9;
+  }
+  .video-card-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), filter 0.4s;
+  }
+  .video-card:hover .video-card-thumb img { animation: card-pan 6s ease-in-out infinite alternate; }
+  @keyframes card-pan {
+    0% { transform: scale(1.08) translate(0,0); filter: brightness(0.9); }
+    100% { transform: scale(1.14) translate(-2%,-2%); filter: brightness(1.05); }
+  }
+  .video-card-thumb::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%);
+    z-index: 1;
+  }
+
+  .preview-tag {
+    position: absolute; top: 12px; left: 12px;
+    background: var(--accent); color: black;
+    padding: 4px 8px; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 0.3s, transform 0.3s; z-index: 3;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .video-card:hover .preview-tag { opacity: 1; transform: translateY(0); }
+  .preview-tag::before {
+    content: ''; width: 6px; height: 6px; background: black; border-radius: 50%;
+    animation: blink-fast 0.6s steps(2) infinite;
+  }
+  @keyframes blink-fast { 50% { opacity: 0; } }
+
+  .preview-progress {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: rgba(0,0,0,0.5); opacity: 0; z-index: 3;
+  }
+  .video-card:hover .preview-progress { opacity: 1; }
+  .video-card:hover .preview-progress::after {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0; background: var(--accent);
+    animation: progress-fill 4s linear forwards;
+  }
+  @keyframes progress-fill { to { width: 100%; } }
+
+  /* Filter chips */
+  .filter-chip {
+    position: relative; padding: 0.625rem 1.125rem;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    color: var(--fg-dim); font-size: 0.8125rem; font-weight: 500;
+    letter-spacing: 0.02em; transition: all 0.25s; cursor: pointer;
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;
+  }
+  .filter-chip:hover { border-color: var(--fg); color: var(--fg); }
+  .filter-chip.active { background: var(--fg); color: #000; border-color: var(--fg); }
+  .filter-chip .count { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; opacity: 0.6; }
+
+  /* Article typography */
+  .article-body p {
+    font-size: 1.0625rem; line-height: 1.75;
+    color: #cfcfcf; margin-bottom: 1.5rem;
+  }
+  .article-body p strong { color: var(--fg); font-weight: 600; }
+  .article-body p em { font-style: italic; color: var(--accent); }
+  .article-body h3 {
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700;
+    font-size: 1.875rem; letter-spacing: -0.025em;
+    margin-top: 3.5rem; margin-bottom: 1.25rem; color: var(--fg);
+  }
+  .article-body h3::before {
+    content: '§ '; color: var(--section-accent);
+    font-family: 'JetBrains Mono', monospace; font-weight: 400;
+    transition: color 0.6s;
+  }
+  .drop-cap::first-letter {
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800;
+    font-size: 5.5rem; float: left; line-height: 0.82;
+    padding-right: 0.75rem; padding-top: 0.5rem; color: var(--section-accent);
+    transition: color 0.6s;
+  }
+  .pull-quote {
+    border-left: 3px solid var(--section-accent);
+    padding: 0.5rem 0 0.5rem 1.75rem;
+    font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600;
+    font-size: 1.625rem; line-height: 1.35; letter-spacing: -0.025em;
+    margin: 2.5rem 0; color: var(--fg);
+    transition: border-color 0.6s;
+  }
+
+  /* Recommendation cards */
+  .rec-card {
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1),
+                opacity 0.4s, border-color 0.3s, filter 0.4s;
+    will-change: transform;
+  }
+  .rec-card.filtered-out {
+    opacity: 0.12; pointer-events: none; filter: grayscale(1) blur(1px);
+  }
+  .rec-card:hover { border-color: var(--yellow); }
+
+  /* Price slider */
+  .price-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; background: rgba(255,255,255,0.08);
+    outline: none; border-radius: 0;
+  }
+  .price-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 24px; height: 24px; background: var(--yellow);
+    cursor: grab; border: 3px solid #000;
+    box-shadow: 0 0 0 1px var(--yellow), 0 0 28px rgba(229,255,0,0.5);
+    transition: transform 0.15s;
+  }
+  .price-slider::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.18); }
+  .price-slider::-moz-range-thumb {
+    width: 24px; height: 24px; background: var(--yellow);
+    cursor: grab; border: 3px solid #000;
+    box-shadow: 0 0 0 1px var(--yellow), 0 0 28px rgba(229,255,0,0.5);
+  }
+
+  /* Newsletter input */
+  .newsletter-input {
+    background: transparent; border: none;
+    border-bottom: 2px solid var(--border);
+    padding: 1.25rem 0; color: var(--fg);
+    font-size: 1.5rem; font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 600; width: 100%; outline: none;
+    transition: border-color 0.3s; letter-spacing: -0.02em;
+  }
+  .newsletter-input::placeholder { color: var(--fg-mute); }
+  .newsletter-input:focus { border-color: var(--accent); }
+
+  /* Buttons */
+  .btn-primary {
+    background: var(--section-accent); color: #000;
+    padding: 0.875rem 1.5rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    font-size: 0.8125rem; transition: all 0.25s;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    border: 1px solid var(--section-accent); cursor: pointer;
+  }
+  .btn-primary:hover {
+    background: var(--fg); border-color: var(--fg);
+    transform: translate(-2px,-2px); box-shadow: 4px 4px 0 var(--section-accent);
+  }
+  .btn-outline {
+    border: 1px solid var(--border-strong); background: transparent;
+    padding: 0.875rem 1.5rem; color: var(--fg);
+    font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    font-size: 0.8125rem; transition: all 0.25s;
+    display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;
+  }
+  .btn-outline:hover { border-color: var(--fg); background: var(--fg); color: #000; }
+
+  /* Section labels */
+  .section-label {
+    display: inline-flex; align-items: center; gap: 0.75rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--section-accent);
+    transition: color 0.7s ease;
+  }
+  .section-label::before {
+    content: ''; width: 36px; height: 1px; background: currentColor;
+  }
+
+  /* Marquee */
+  .marquee-wrap {
+    overflow: hidden; white-space: nowrap;
+    border-block: 1px solid var(--border);
+    background: #000; padding-block: 1.25rem;
+  }
+  .marquee-track {
+    display: inline-flex; animation: marquee 38s linear infinite;
+    align-items: center;
+  }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+
+  /* Scroll progress */
+  .scroll-progress-bar {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: var(--section-accent); z-index: 100;
+    width: 0; transition: background-color 0.5s;
+  }
+
+  /* Stat cells */
+  .stat-cell { border-right: 1px solid var(--border); padding: 1.5rem; }
+  .stat-cell:last-child { border-right: none; }
+
+  /* Video player shell */
+  .video-player-shell { background: #000; border: 1px solid var(--border); overflow: hidden; }
+  .video-player-screen { position: relative; aspect-ratio: 16/9; overflow: hidden; }
+  .video-player-screen img { width: 100%; height: 100%; object-fit: cover; }
+  .video-controls { padding: 14px 18px; background: #0a0a0a; border-top: 1px solid var(--border); }
+  .video-progress {
+    height: 4px; background: rgba(255,255,255,0.12);
+    position: relative; margin-bottom: 12px; cursor: pointer;
+  }
+  .video-progress-fill {
+    position: absolute; inset: 0; background: var(--accent); width: 37%;
+  }
+  .video-progress-fill::after {
+    content: ''; position: absolute; right: -6px; top: -4px;
+    width: 12px; height: 12px; background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 14px var(--accent);
+  }
+
+  /* Chapter list */
+  .chapter {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 10px 12px; text-align: left;
+    border-left: 2px solid transparent; transition: all 0.2s;
+    font-size: 0.8125rem;
+  }
+  .chapter:hover { background: rgba(255,255,255,0.04); border-left-color: var(--fg-dim); color: var(--fg); }
+  .chapter.active { background: rgba(255,255,255,0.06); border-left-color: var(--accent); color: var(--fg); }
+
+  /* Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+    body::before { display: none; }
+  }
+
+  /* Hide scrollbar on chip row */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  /* Back to top */
+  .back-to-top {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 48px; height: 48px; background: var(--bg-elevated);
+    border: 1px solid var(--border-strong); color: var(--fg);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: all 0.3s;
+    z-index: 50; cursor: pointer;
+  }
+  .back-to-top.visible { opacity: 1; pointer-events: auto; }
+  .back-to-top:hover { background: var(--section-accent); color: #000; border-color: var(--section-accent); }
+
+  /* Glow utility */
+  .accent-glow { text-shadow: 0 0 32px rgba(255,42,42,0.45); }
+</style>
+</head>
+<body>
+
+<!-- Top scroll progress bar -->
+<div class="scroll-progress-bar" id="scrollProgress"></div>
+
+<!-- Back to top button -->
+<button class="back-to-top" id="backToTop" aria-label="Back to top">
+  <i class="fas fa-arrow-up"></i>
+</button>
+
+<!-- Header -->
+<header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-black/60 border-b border-white/5">
+  <div class="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-3 group">
+      <div class="w-9 h-9 flex items-center justify-center font-display text-black text-xl transition-colors" style="background: var(--section-accent)">K</div>
+      <div class="flex flex-col leading-none">
+        <span class="font-display text-xl tracking-tight">KILBURN</span>
+        <span class="text-[10px] font-mono text-[var(--fg-dim)] tracking-widest">TECH / EST.2019</span>
+      </div>
+    </a>
+
+    <nav class="hidden lg:flex items-center gap-8 text-sm font-medium">
+      <a href="#library" class="hover:text-white text-[var(--fg-dim)] transition flex items-center gap-1.5">
+        <span class="font-mono text-xs text-[var(--fg-mute)]">01</span>Videos
+      </a>
+      <a href="#reviews" class="hover:text-white text-[var(--fg-dim)] transition flex items-center gap-1.5">
+        <span class="font-mono text-xs text-[var(--fg-mute)]">02</span>Reviews
+      </a>
+      <a href="#recommendations" class="hover:text-white text-[var(--fg-dim)] transition flex items-center gap-1.5">
+        <span class="font-mono text-xs text-[var(--fg-mute)]">03</span>Picks
+      </a>
+      <a href="#about" class="hover:text-white text-[var(--fg-dim)] transition flex items-center gap-1.5">
+        <span class="font-mono text-xs text-[var(--fg-mute)]">04</span>Studio
+      </a>
+    </nav>
+
+    <div class="flex items-center gap-3">
+      <button class="hidden md:flex items-center gap-2 text-sm text-[var(--fg-dim)] hover:text-white transition px-3 py-2 border border-transparent hover:border-[var(--border)]">
+        <i class="fas fa-search text-xs"></i>
+        <span class="font-mono">/</span>
+      </button>
+      <a href="#newsletter" class="btn-primary text-xs">Subscribe <i class="fas fa-arrow-right text-[10px]"></i></a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="pt-24 pb-10 px-6" data-accent="red">
+  <div class="max-w-[1600px] mx-auto">
+    <!-- Metadata strip -->
+    <div class="flex items-center justify-between mb-5 text-[11px] font-mono uppercase tracking-widest text-[var(--fg-dim)]">
+      <div class="flex items-center gap-5">
+        <span class="flex items-center gap-2 text-white">
+          <span class="live-dot"></span>NEW · EP 247
+        </span>
+        <span class="hidden md:inline">FRI 14.03.25</span>
+        <span class="hidden md:inline">21:00 UTC</span>
+      </div>
+      <div class="hidden md:flex items-center gap-5">
+        <span>SUBS · <span class="text-white">1.24M</span></span>
+        <span>VIDS · <span class="text-white">412</span></span>
+        <span style="color: var(--section-accent)">↑ 8.4K TODAY</span>
+      </div>
+    </div>
+
+    <!-- Hero cinematic frame -->
+    <div class="cinematic-frame vignette relative aspect-video cursor-pointer group">
+      <img src="https://picsum.photos/seed/aspectphone/1920/1080" alt="Latest video thumbnail" class="w-full h-full object-cover absolute inset-0">
+      <div class="scan-overlay"></div>
+
+      <!-- Gradient overlays -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-[2]"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/20 z-[2]"></div>
+
+      <!-- Top bar -->
+      <div class="absolute top-0 left-0 right-0 p-5 md:p-7 flex items-start justify-between z-[5]">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="bg-[var(--accent)] text-black text-[10px] font-bold px-2 py-1 uppercase tracking-wider font-mono">New Episode</span>
+          <span class="text-[10px] font-mono text-white/90 border border-white/30 px-2 py-1 backdrop-blur bg-black/30">4K · HDR · DOLBY ATMOS</span>
+          <span class="hidden md:inline text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 backdrop-blur bg-black/30">SHOT ON FX3</span>
+        </div>
+        <div class="hidden md:flex items-center gap-4 text-[10px] font-mono text-white/70">
+          <span><i class="fas fa-eye mr-1"></i> 142,304</span>
+          <span><i class="far fa-clock mr-1"></i> 18:24</span>
+        </div>
+      </div>
+
+      <!-- Bottom content -->
+      <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10 lg:p-14 z-[5]">
+        <div class="max-w-4xl">
+          <div class="text-[11px] font-mono uppercase tracking-widest text-[var(--accent)] mb-4 flex items-center gap-2">
+            <span class="w-8 h-px bg-[var(--accent)]"></span>Flagship Review · Mar 2025
+          </div>
+          <h1 class="font-display text-4xl md:text-6xl lg:text-7xl text-white mb-5 accent-glow" style="text-wrap: balance">
+            The Phone That Killed<br>The Compact Flagship.
+          </h1>
+          <p class="text-white/75 text-base md:text-lg lg:text-xl max-w-2xl mb-7 leading-relaxed font-light">
+            Three weeks with the Aspect Mini Pro — a phone that finally proves small doesn't mean compromise. Mostly. With caveats I'm still furious about.
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <button class="btn-primary"><i class="fas fa-play text-[10px]"></i>Watch · 18:24</button>
+            <button class="btn-outline"><i class="fas fa-align-left text-[10px]"></i>Read The Deep-Dive</button>
+            <span class="hidden md:flex items-center gap-2 ml-2 text-[10px] font-mono uppercase tracking-widest text-white/40">
+              <i class="fas fa-arrow-pointer"></i>Hover to preview
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hover preview indicator -->
+      <div class="absolute top-1/2 right-5 md:right-7 -translate-y-1/2 z-[5] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div class="bg-[var(--accent)] text-black text-[10px] font-mono font-bold px-3 py-2 flex items-center gap-2">
+          <i class="fas fa-circle text-[6px] animate-pulse"></i>PREVIEWING
+        </div>
+      </div>
+
+      <!-- Corner markers -->
+      <div class="absolute top-3 left-3 w-3 h-3 border-t border-l border-white/40 z-[5]"></div>
+      <div class="absolute top-3 right-3 w-3 h-3 border-t border-r border-white/40 z-[5]"></div>
+      <div class="absolute bottom-3 left-3 w-3 h-3 border-b border-l border-white/40 z-[5]"></div>
+      <div class="absolute bottom-3 right-3 w-3 h-3 border-b border-r border-white/40 z-[5]"></div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="grid grid-cols-2 md:grid-cols-4 mt-px border-y border-[var(--border)] bg-black">
+      <div class="stat-cell">
+        <div class="text-[10px] font-mono uppercase text-[var(--fg-dim)] mb-1.5 tracking-widest">This Week</div>
+        <div class="font-display text-2xl md:text-3xl">4 New Drops</div>
+      </div>
+      <div class="stat-cell">
+        <div class="text-[10px] font-mono uppercase text-[var(--fg-dim)] mb-1.5 tracking-widest">Watching Now</div>
+        <div class="font-display text-2xl md:text-3xl">2,847</div>
+      </div>
+      <div class="stat-cell">
+        <div class="text-[10px] font-mono uppercase text-[var(--fg-dim)] mb-1.5 tracking-widest">In The Queue</div>
+        <div class="font-display text-2xl md:text-3xl">38 Reviews</div>
+      </div>
+      <div class="stat-cell">
+        <div class="text-[10px] font-mono uppercase text-[var(--fg-dim)] mb-1.5 tracking-widest">Next Drop</div>
+        <div class="font-display text-2xl md:text-3xl" style="color: var(--section-accent)">2 Days</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Marquee -->
+<div class="marquee-wrap">
+  <div class="marquee-track font-display text-xl md:text-2xl">
+    <span class="px-6">HONEST TAKES</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">NO SPONSOR FILTERS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">REAL BATTERY TESTS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">CALIBRATED OPINIONS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">RAW FOOTAGE</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">4K · 60FPS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">HONEST TAKES</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">NO SPONSOR FILTERS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">REAL BATTERY TESTS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">CALIBRATED OPINIONS</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">RAW FOOTAGE</span><span class="px-3 text-[var(--accent)]">●</span>
+    <span class="px-6">4K · 60FPS</span><span class="px-3 text-[var(--accent)]">●</span>
+  </div>
+</div>
+
+<!-- VIDEO LIBRARY -->
+<section id="library" class="px-6 py-16 md:py-24" data-accent="blue">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+      <div>
+        <div class="section-label mb-4">/ 01 — The Library</div>
+        <h2 class="font-display text-5xl md:text-6xl lg:text-7xl" style="text-wrap: balance">
+          Every video.<br><span style="color: var(--section-accent)">No filter.</span>
+        </h2>
+        <p class="text-[var(--fg-dim)] mt-4 max-w-xl text-base">
+          412 videos since 2019. Chronological, searchable, occasionally embarrassing. Hover any thumbnail for a silent preview.
+        </p>
+      </div>
+      <div class="flex items-center gap-1 text-xs flex-wrap">
+        <span class="text-[var(--fg-dim)] font-mono mr-2">SORT:</span>
+        <button class="font-mono px-3 py-1.5 bg-white text-black font-bold">NEWEST</button>
+        <button class="font-mono px-3 py-1.5 text-[var(--fg-dim)] hover:text-white transition border border-transparent hover:border-[var(--border)]">POPULAR</button>
+        <button class="font-mono px-3 py-1.5 text-[var(--fg-dim)] hover:text-white transition border border-transparent hover:border-[var(--border)]">LONGEST</button>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="flex gap-2 overflow-x-auto pb-3 mb-10 -mx-6 px-6 no-scrollbar">
+      <button class="filter-chip active" data-filter="all">All <span class="count">412</span></button>
+      <button class="filter-chip" data-filter="review">Reviews <span class="count">187</span></button>
+      <button class="filter-chip" data-filter="comparison">Comparisons <span class="count">94</span></button>
+      <button class="filter-chip" data-filter="news">News &amp; Takes <span class="count">68</span></button>
+      <button class="filter-chip" data-filter="deep">Deep Dives <span class="count">34</span></button>
+      <button class="filter-chip" data-filter="setup">Setups <span class="count">19</span></button>
+      <button class="filter-chip" data-filter="bts">Behind The Scenes <span class="count">10</span></button>
+    </div>
+
+    <!-- Video grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10" id="videoGrid"></div>
+
+    <div class="mt-14 flex flex-col items-center gap-4">
+      <button class="btn-outline">Load 12 More <i class="fas fa-arrow-down text-[10px]"></i></button>
+      <p class="text-xs text-[var(--fg-dim)] font-mono">SHOWING 12 OF 412</p>
+    </div>
+  </div>
+</section>
+
+<!-- WRITTEN REVIEW (Sticky Video Companion) -->
+<section id="reviews" class="px-6 py-16 md:py-24 border-t border-[var(--border)]" data-accent="red">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="mb-12 max-w-3xl">
+      <div class="section-label mb-4">/ 02 — Written Companion</div>
+      <h2 class="font-display text-5xl md:text-6xl lg:text-7xl mb-5" style="text-wrap: balance">
+        Read along,<br><span style="color: var(--section-accent)">while it plays.</span>
+      </h2>
+      <p class="text-[var(--fg-dim)] text-base md:text-lg">
+        The video stays pinned on the left. The article scrolls on the right. Charts, benchmarks, and opinions — without losing the footage.
+      </p>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-10 lg:gap-16">
+      <!-- Left: sticky video player -->
+      <div class="lg:sticky lg:top-24 lg:self-start">
+        <div class="video-player-shell">
+          <div class="video-player-screen">
+            <img src="https://picsum.photos/seed/reviewvid/1280/720" alt="Video still">
+            <div class="absolute top-4 left-4 bg-black/80 backdrop-blur px-3 py-2 text-[10px] font-mono uppercase tracking-widest flex items-center gap-2 z-10">
+              <span class="live-dot"></span>Reading Mode · Video Pinned
+            </div>
+            <div class="absolute top-4 right-4 bg-black/80 backdrop-blur px-3 py-2 text-[10px] font-mono text-white z-10">06:43 / 18:24</div>
+            <div class="absolute inset-0 flex items-center justify-center bg-black/30">
+              <button class="w-16 h-16 bg-white/95 text-black flex items-center justify-center hover:bg-[var(--accent)] hover:text-white transition">
+                <i class="fas fa-pause text-xl"></i>
+              </button>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+          </div>
+          <div class="video-controls">
+            <div class="video-progress"><div class="video-progress-fill"></div></div>
+            <div class="flex items-center justify-between text-white">
+              <div class="flex items-center gap-3">
+                <button class="text-white hover:text-[var(--accent)] transition"><i class="fas fa-backward-step text-xs"></i></button>
+                <button class="text-white hover:text-[var(--accent)] transition"><i class="fas fa-play text-sm"></i></button>
+                <button class="text-white hover:text-[var(--accent)] transition"><i class="fas fa-forward-step text-xs"></i></button>
+                <span class="font-mono text-[11px] text-white/70 ml-2">06:43 / 18:24</span>
+              </div>
+              <div class="flex items-center gap-3 text-white/80">
+                <button class="hover:text-white transition"><i class="fas fa-volume-high text-xs"></i></button>
+                <button class="hover:text-white transition"><i class="fas fa-closed-captioning text-xs"></i></button>
+                <button class="hover:text-white transition"><i class="fas fa-cog text-xs"></i></button>
+                <button class="hover:text-white transition"><i class="fas fa-expand text-xs"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video meta -->
+        <div class="mt-6 pb-6 border-b border-[var(--border)]">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--accent)] mb-2">Ep. 247 · Flagship Review</div>
+          <h3 class="font-display text-2xl md:text-3xl mb-3 leading-tight">The Phone That Killed The Compact Flagship.</h3>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--fg-dim)] font-mono">
+            <span>18:24</span><span>·</span>
+            <span>MAR 14, 2025</span><span>·</span>
+            <span>142,304 views</span><span>·</span>
+            <span class="text-[var(--accent)]">↑ 8.4K likes</span>
+          </div>
+        </div>
+
+        <!-- Chapters -->
+        <div class="mt-6">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-3">Chapters</div>
+          <div class="space-y-1">
+            <button class="chapter active"><span>00:00 — Intro: the small phone problem</span><i class="fas fa-play text-[10px] text-[var(--accent)]"></i></button>
+            <button class="chapter text-[var(--fg-dim)]"><span>02:14 — Build &amp; in-hand feel</span><span class="text-[10px] text-[var(--fg-mute)] font-mono">02:14</span></button>
+            <button class="chapter text-[var(--fg-dim)]"><span>05:48 — The display reality check</span><span class="text-[10px] text-[var(--fg-mute)] font-mono">05:48</span></button>
+            <button class="chapter text-[var(--fg-dim)]"><span>08:32 — Battery: three-week data</span><span class="text-[10px] text-[var(--fg-mute)] font-mono">08:32</span></button>
+            <button class="chapter text-[var(--fg-dim)]"><span>12:19 — Cameras in low light</span><span class="text-[10px] text-[var(--fg-mute)] font-mono">12:19</span></button>
+            <button class="chapter text-[var(--fg-dim)]"><span>15:41 — Verdict &amp; alternatives</span><span class="text-[10px] text-[var(--fg-mute)] font-mono">15:41</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: article -->
+      <article class="article-body max-w-2xl">
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--accent)] mb-4">
+          Deep-Dive Companion · 4,200 words · 12 min read
+        </div>
+        <h2 class="font-display text-3xl md:text-5xl mb-7 leading-[1.02]" style="text-wrap: balance">
+          Three weeks. Eleven instruments. One conclusion about small phones.
+        </h2>
+
+        <div class="flex items-center gap-4 mb-10 pb-6 border-b border-[var(--border)]">
+          <img src="https://picsum.photos/seed/marcusportrait/120/120" class="w-12 h-12 object-cover" alt="Author">
+          <div class="flex-1">
+            <div class="font-semibold text-sm">Marcus Kilburn</div>
+            <div class="text-[10px] text-[var(--fg-dim)] font-mono uppercase tracking-widest mt-0.5">Senior Editor · 6 Years On The Beat</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="w-9 h-9 border border-[var(--border)] flex items-center justify-center hover:border-white transition text-xs"><i class="fab fa-x-twitter"></i></button>
+            <button class="w-9 h-9 border border-[var(--border)] flex items-center justify-center hover:border-white transition text-xs"><i class="fab fa-instagram"></i></button>
+          </div>
+        </div>
+
+        <p class="drop-cap">There's a particular kind of disappointment that comes from a phone that's almost right. The Aspect Mini Pro is the most frustrating device I've tested this year — not because it's bad, but because it's <em>so close</em> to being the answer to a question we've been asking for half a decade: can a small phone still be a flagship?</p>
+
+        <p>For context: I've been daily-driving compact Androids since the original Pixel 5. Every year, the category gets a eulogy. Every year, some manufacturer tries to revive it. The Mini Pro is Aspect's third attempt, and the first one I'd actually recommend to someone who isn't a masochist with small hands.</p>
+
+        <p>But "recommend" comes with footnotes, and the footnotes matter. Let's walk through what works, what doesn't, and why a phone I genuinely enjoy using still made me angry enough to write 4,200 words about it.</p>
+
+        <div class="pull-quote">"It's not that the phone is perfect — it's that the compromises are finally in the right places. Mostly."</div>
+
+        <h3>Build Quality &amp; In-Hand Feel</h3>
+
+        <p>The Mini Pro is the first compact phone since the iPhone 13 Mini that doesn't feel like a concession. At 168g, it's substantial without being heavy. The titanium frame is cold to the touch in a way that signals <strong>"this is a real piece of hardware"</strong>, not a budget compromise.</p>
+
+        <p>I spent two weeks using it alongside my daily Pixel 9 Pro, and every time I picked up the Mini Pro there was a small dopamine hit that comes from a device that fits. My thumb reaches the top corner. The power button sits where my thumb naturally falls. The phone disappears into a jeans pocket.</p>
+
+        <p>These sound like small things. They are not. After a decade of phones designed for hands the size of dinner plates, the Mini Pro feels like coming home.</p>
+
+        <h3>The Display: A Reality Check</h3>
+
+        <p>Here's where the praise gets complicated. The 6.1-inch LTPO panel is, on paper, excellent: 1-120Hz adaptive, 2400 nits peak, Dolby Vision. In practice, it's <em>very good</em>, with one specific weakness I haven't seen mentioned in other reviews.</p>
+
+        <p>Outdoor visibility in direct sunlight is roughly 15% worse than the iPhone 15 Pro's display when measured with my Sekonic C-800. That's not catastrophic, but it's the kind of number that separates "great" from "best in class." Aspect's marketing leans heavily on the 2400-nit peak, but peak brightness is a misleading metric — sustained outdoor brightness matters more, and that's where the Mini Pro falls short.</p>
+
+        <p>For most people, indoors or in shade, this won't matter. If you live somewhere sunny and work outside, it might.</p>
+
+        <div class="my-8 p-5 border-l-2 border-[var(--accent)] bg-white/[0.02]">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--accent)] mb-2">Measurement Note</div>
+          <p class="text-sm m-0 text-[var(--fg-dim)]">All display measurements taken with a Sekonic C-800 color meter, calibrated January 2025. Three readings averaged per data point. Full methodology available on request.</p>
+        </div>
+
+        <h3>The Battery Question</h3>
+
+        <p>Let's address the elephant. The 4,200 mAh cell is, on paper, a regression from last year's 4,800. In practice, the new 3nm silicon more than compensates — but only if you don't game.</p>
+
+        <p>Over 21 days of testing, I averaged <strong>6 hours 42 minutes</strong> of screen-on time per day. That's with mixed use: 90 minutes of YouTube, 45 minutes of navigation, 2 hours of social, the rest split between messaging, photography, and browsing. Standby drain averaged 1.8% per hour — excellent, though not class-leading.</p>
+
+        <p>The moment you fire up Genshin Impact, the picture changes. Sustained 30-minute sessions dropped battery by 22%, and the phone got noticeably warm. Aspect's thermal management is good, but the laws of physics are unforgiving in a chassis this small.</p>
+
+        <p>Should you care? If you're a serious mobile gamer, the Mini Pro isn't for you — and Aspect isn't pretending otherwise. For everyone else, the battery is genuinely a non-issue.</p>
+
+        <h3>Cameras: Three Lenses, Two Good Surprises</h3>
+
+        <p>The camera system is where the Mini Pro most exceeds expectations. The 50MP main sensor is a known quantity — it's the same unit as the full-size Aspect 12, and performs identically. The 12MP ultrawide is fine, nothing special.</p>
+
+        <p>The telephoto, though, is a revelation. Aspect put a 3x optical periscope in a phone that's 8.4mm thick. I'm not sure how, and I'm not sure it should be possible. But it works, and the resulting photos in the 3-6x range are sharper than what I get from my Pixel 9 Pro's 5x in good light.</p>
+
+        <p>Low light remains the Mini Pro's weak spot. The smaller sensor physics still apply, and while Aspect's computational pipeline does impressive work, the Pixel 9 Pro and iPhone 16 Pro both produce cleaner images at night. That's a tradeoff I'd happily make.</p>
+
+        <div class="pull-quote">"The fact that I keep reaching for the Mini Pro instead of my Pixel says something. I'm just not entirely sure what."</div>
+
+        <h3>The Verdict</h3>
+
+        <p>The Aspect Mini Pro isn't perfect. The display could be brighter. The battery takes a hit under load. Low-light photography lags the competition. It costs $899, which is exactly the price of a Pixel 9 Pro with a bigger screen and better camera.</p>
+
+        <p>And yet, three weeks in, I keep using it. Because the Mini Pro does something its competitors don't: it disappears. It's a phone that doesn't demand attention, doesn't bulge in my pocket, doesn't require two hands to use safely. It's a tool, in the best sense of the word.</p>
+
+        <p>If you've been waiting for a small phone that doesn't suck, this is it. If you don't care about size, get a Pixel. Both are reasonable decisions.</p>
+
+        <p class="text-[var(--fg-dim)] text-sm italic mt-12 pt-6 border-t border-[var(--border)]">
+          The Aspect Mini Pro was purchased retail for this review. No review unit, no loaner, no sponsor. Full disclosure in the description.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- RECOMMENDATIONS -->
+<section id="recommendations" class="px-6 py-16 md:py-24 border-t border-[var(--border)]" data-accent="yellow">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="mb-12 max-w-3xl">
+      <div class="section-label mb-4">/ 03 — What I'd Buy</div>
+      <h2 class="font-display text-5xl md:text-6xl lg:text-7xl mb-5" style="text-wrap: balance">
+        Money where<br><span style="color: var(--section-accent)">my mouth is.</span>
+      </h2>
+      <p class="text-[var(--fg-dim)] text-base md:text-lg">
+        Drag the slider. Watch the list re-sort in real time. These are products I've actually bought with my own money — not sponsor deals, not loaners.
+      </p>
+    </div>
+
+    <!-- Price slider control -->
+    <div class="bg-black border border-[var(--border)] p-6 md:p-8 mb-10">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+        <div>
+          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-2">Budget Range</div>
+          <div class="flex items-baseline gap-3 flex-wrap">
+            <span class="font-display text-4xl md:text-5xl" style="color: var(--section-accent)" id="priceLowDisplay">$50</span>
+            <span class="text-[var(--fg-dim)] font-display text-3xl">—</span>
+            <span class="font-display text-4xl md:text-5xl" style="color: var(--section-accent)" id="priceHighDisplay">$2,000</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-2">Matches</div>
+          <div class="flex items-baseline gap-2 justify-end">
+            <span class="font-display text-4xl md:text-5xl" id="productCount">12</span>
+            <span class="text-xs text-[var(--fg-dim)] font-mono uppercase">PRODUCTS</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)]">Minimum</label>
+            <span class="text-xs font-mono" id="priceLowLabel">$50</span>
+          </div>
+          <input type="range" min="0" max="2000" value="50" step="10" class="price-slider" id="priceLow">
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)]">Maximum</label>
+            <span class="text-xs font-mono" id="priceHighLabel">$2,000</span>
+          </div>
+          <input type="range" min="0" max="2000" value="2000" step="10" class="price-slider" id="priceHigh">
+        </div>
+      </div>
+    </div>
+
+    <!-- Category filter row -->
+    <div class="flex gap-2 flex-wrap mb-8 text-xs font-mono">
+      <span class="text-[var(--fg-dim)] uppercase mr-2 self-center">Filter:</span>
+      <button class="px-3 py-1 bg-[var(--yellow)] text-black font-bold">ALL</button>
+      <button class="px-3 py-1 border border-[var(--border)] hover:border-white transition">AUDIO</button>
+      <button class="px-3 py-1 border border-[var(--border)] hover:border-white transition">DISPLAYS</button>
+      <button class="px-3 py-1 border border-[var(--border)] hover:border-white transition">INPUT</button>
+      <button class="px-3 py-1 border border-[var(--border)] hover:border-white transition">PHONES</button>
+      <button class="px-3 py-1 border border-[var(--border)] hover:border-white transition">CAMERA</button>
+    </div>
+
+    <!-- Recommendation grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="recGrid"></div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section id="newsletter" class="px-6 py-24 md:py-32 border-t border-[var(--border)] relative overflow-hidden" data-accent="red">
+  <div class="absolute inset-0 opacity-40 pointer-events-none">
+    <div class="absolute -top-1/2 -right-1/4 w-[800px] h-[800px] rounded-full blur-3xl" style="background: radial-gradient(circle, rgba(255,42,42,0.25), transparent 70%)"></div>
+    <div class="absolute -bottom-1/3 -left-1/4 w-[600px] h-[600px] rounded-full blur-3xl" style="background: radial-gradient(circle, rgba(43,111,255,0.12), transparent 70%)"></div>
+  </div>
+
+  <div class="max-w-4xl mx-auto text-center relative z-10">
+    <div class="section-label mb-6 justify-center" style="display: inline-flex">/ 04 — Direct Line</div>
+
+    <h2 class="font-display text-5xl md:text-6xl lg:text-8xl mb-6" style="text-wrap: balance">
+      Get the takes<br><span style="color: var(--section-accent)">before they're public.</span>
+    </h2>
+
+    <p class="text-[var(--fg-dim)] text-base md:text-lg mb-12 max-w-xl mx-auto">
+      One email. Every Sunday. Three products, two opinions, zero filler. 47,831 readers and counting.
+    </p>
+
+    <form class="text-left max-w-2xl mx-auto" id="newsletterForm">
+      <div class="flex items-end gap-4 mb-4">
+        <div class="flex-1">
+          <label class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-2 block">Your Email Address</label>
+          <input type="email" id="emailInput" class="newsletter-input" placeholder="" autocomplete="email">
+        </div>
+        <button type="submit" class="btn-primary mb-3 whitespace-nowrap">Subscribe <i class="fas fa-arrow-right text-[10px]"></i></button>
+      </div>
+      <div class="text-xs text-[var(--fg-dim)] flex items-center gap-3 mb-2">
+        <i class="fas fa-shield-halved"></i>
+        <span>No spam. Unsubscribe in one click. I personally read every reply — even the angry ones.</span>
+      </div>
+      <div id="subscribeStatus" class="text-xs font-mono mt-3" style="color: var(--section-accent); min-height: 1em;"></div>
+    </form>
+
+    <div class="mt-20 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
+      <div class="text-left">
+        <div class="font-display text-4xl md:text-5xl" style="color: var(--section-accent)">47K</div>
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mt-2">Subscribers</div>
+      </div>
+      <div class="text-left">
+        <div class="font-display text-4xl md:text-5xl">52</div>
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mt-2">Issues Sent</div>
+      </div>
+      <div class="text-left">
+        <div class="font-display text-4xl md:text-5xl">4.3</div>
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mt-2">Min Avg Read</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PATREON / BTS -->
+<section class="px-6 py-16 md:py-24 border-t border-[var(--border)]" data-accent="blue">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+      <div>
+        <div class="section-label mb-4">/ 05 — Behind The Curtain</div>
+        <h2 class="font-display text-5xl md:text-6xl lg:text-7xl mb-6" style="text-wrap: balance">
+          The cuts that<br>didn't make<br><span style="color: var(--section-accent)">the video.</span>
+        </h2>
+        <p class="text-[var(--fg-dim)] text-base md:text-lg mb-6 max-w-lg">
+          Members get raw footage, failed takes, the spreadsheets behind every comparison, and a private monthly Q&amp;A. Three tiers. Cancel anytime. No tiers locked behind "exclusive content" — it's all stuff that wouldn't exist without your support.
+        </p>
+        <div class="flex flex-wrap gap-3 mb-8">
+          <button class="btn-primary"><i class="fab fa-patreon text-xs"></i>Join On Patreon</button>
+          <button class="btn-outline">See Tiers</button>
+        </div>
+        <div class="text-xs text-[var(--fg-dim)] font-mono">
+          <span class="text-[var(--accent)]">2,847</span> members · avg rating 4.9/5
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="aspect-square overflow-hidden col-span-2 row-span-2">
+          <img src="https://picsum.photos/seed/studio1/600/600" class="w-full h-full object-cover grayscale hover:grayscale-0 transition duration-700">
+        </div>
+        <div class="aspect-square overflow-hidden">
+          <img src="https://picsum.photos/seed/studio2/300/300" class="w-full h-full object-cover grayscale hover:grayscale-0 transition duration-700">
+        </div>
+        <div class="aspect-square overflow-hidden">
+          <img src="https://picsum.photos/seed/studio3/300/300" class="w-full h-full object-cover grayscale hover:grayscale-0 transition duration-700">
+        </div>
+        <div class="aspect-square overflow-hidden col-span-2">
+          <img src="https://picsum.photos/seed/studio4/600/300" class="w-full h-full object-cover grayscale hover:grayscale-0 transition duration-700">
+        </div>
+        <div class="aspect-square overflow-hidden">
+          <img src="https://picsum.photos/seed/studio5/300/300" class="w-full h-full object-cover grayscale hover:grayscale-0 transition duration-700">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT / STUDIO -->
+<section id="about" class="px-6 py-16 md:py-24 border-t border-[var(--border)]">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="grid lg:grid-cols-12 gap-10">
+      <div class="lg:col-span-5">
+        <div class="lg:sticky lg:top-24">
+          <div class="aspect-[4/5] overflow-hidden bg-black relative">
+            <img src="https://picsum.photos/seed/marcusbw/800/1000" class="w-full h-full object-cover" alt="Marcus Kilburn portrait">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+            <div class="absolute top-3 left-3 w-3 h-3 border-t border-l border-white/60"></div>
+            <div class="absolute top-3 right-3 w-3 h-3 border-t border-r border-white/60"></div>
+            <div class="absolute bottom-3 left-3 w-3 h-3 border-b border-l border-white/60"></div>
+            <div class="absolute bottom-3 right-3 w-3 h-3 border-b border-r border-white/60"></div>
+          </div>
+          <div class="mt-4 grid grid-cols-3 gap-2 text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)]">
+            <div><div class="text-white mb-1">MARCUS KILBURN</div><div>FOUNDER / HOST</div></div>
+            <div><div class="text-white mb-1">EST. 2019</div><div>LONDON / TOKYO</div></div>
+            <div><div class="text-[var(--accent)] mb-1">6 YRS</div><div>412 VIDEOS</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7">
+        <div class="section-label mb-4">/ 06 — About</div>
+        <h2 class="font-display text-4xl md:text-6xl mb-8" style="text-wrap: balance">
+          One person.<br>One opinion.<br><span class="text-[var(--fg-dim)]">A lot of cables.</span>
+        </h2>
+
+        <div class="space-y-5 text-base md:text-lg text-[var(--fg-dim)] leading-relaxed max-w-2xl">
+          <p>I started making videos in 2019 because I was tired of tech reviews that read like press releases. Six years and 412 videos later, that's still the only rule: if I wouldn't say it to a friend over coffee, it doesn't go in the script.</p>
+          <p>Every product on this site was either bought retail, borrowed from a friend, or returned after testing. No review units. No sponsored first impressions. No "this changes everything" thumbnails for products that don't.</p>
+          <p>The studio is in <span class="text-white">East London</span>. The editing happens in <span class="text-white">Tokyo</span>. The opinions are entirely my own and frequently wrong, which I think is fine.</p>
+        </div>
+
+        <div class="mt-12 space-y-3">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-4">Operating Principles</div>
+          <div class="flex items-start gap-4 py-3 border-b border-[var(--border)]">
+            <span class="font-display text-2xl text-[var(--accent)] w-12 shrink-0">01</span>
+            <div>
+              <div class="font-semibold">If it's sponsored, it says so. Loudly.</div>
+              <div class="text-sm text-[var(--fg-dim)] mt-1">Three sponsors max per year. Always disclosed. Never the main video.</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-4 py-3 border-b border-[var(--border)]">
+            <span class="font-display text-2xl text-[var(--accent)] w-12 shrink-0">02</span>
+            <div>
+              <div class="font-semibold">Three-week minimum testing window.</div>
+              <div class="text-sm text-[var(--fg-dim)] mt-1">No "first impressions" passed off as reviews. If I haven't lived with it, I won't grade it.</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-4 py-3 border-b border-[var(--border)]">
+            <span class="font-display text-2xl text-[var(--accent)] w-12 shrink-0">03</span>
+            <div>
+              <div class="font-semibold">Numbers over adjectives.</div>
+              <div class="text-sm text-[var(--fg-dim)] mt-1">"Fast" is meaningless. "47ms latency measured at 1kHz" is something I can defend.</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-4 py-3">
+            <span class="font-display text-2xl text-[var(--accent)] w-12 shrink-0">04</span>
+            <div>
+              <div class="font-semibold">Wrong is fine. Lying isn't.</div>
+              <div class="text-sm text-[var(--fg-dim)] mt-1">When I get something wrong, I update the video and pin the correction. Errors are public.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="px-6 pt-16 pb-8 border-t border-[var(--border)]">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-8 mb-16">
+      <div class="col-span-2">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-9 h-9 flex items-center justify-center font-display text-black text-xl" style="background: var(--section-accent)">K</div>
+          <div>
+            <div class="font-display text-xl">KILBURN</div>
+            <div class="text-[10px] font-mono text-[var(--fg-dim)] tracking-widest">EST. 2019 · LONDON</div>
+          </div>
+        </div>
+        <p class="text-sm text-[var(--fg-dim)] max-w-sm mb-6">
+          Tech reviews without the marketing filter. One human, one opinion, 412 videos and counting.
+        </p>
+        <div class="flex gap-3">
+          <a href="#" class="w-10 h-10 border border-[var(--border)] flex items-center justify-center hover:border-white hover:bg-white hover:text-black transition"><i class="fab fa-youtube"></i></a>
+          <a href="#" class="w-10 h-10 border border-[var(--border)] flex items-center justify-center hover:border-white hover:bg-white hover:text-black transition"><i class="fab fa-x-twitter"></i></a>
+          <a href="#" class="w-10 h-10 border border-[var(--border)] flex items-center justify-center hover:border-white hover:bg-white hover:text-black transition"><i class="fab fa-instagram"></i></a>
+          <a href="#" class="w-10 h-10 border border-[var(--border)] flex items-center justify-center hover:border-white hover:bg-white hover:text-black transition"><i class="fab fa-patreon"></i></a>
+          <a href="#" class="w-10 h-10 border border-[var(--border)] flex items-center justify-center hover:border-white hover:bg-white hover:text-black transition"><i class="fas fa-rss"></i></a>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-4">Content</div>
+        <ul class="space-y-2 text-sm">
+          <li><a href="#library" class="hover:text-[var(--accent)] transition">Latest Videos</a></li>
+          <li><a href="#reviews" class="hover:text-[var(--accent)] transition">Written Reviews</a></li>
+          <li><a href="#recommendations" class="hover:text-[var(--accent)] transition">Buying Guides</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Podcast</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Archive</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-4">Studio</div>
+        <ul class="space-y-2 text-sm">
+          <li><a href="#about" class="hover:text-[var(--accent)] transition">About</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Equipment</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Methodology</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Ethics Policy</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Contact</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="text-[10px] font-mono uppercase tracking-widest text-[var(--fg-dim)] mb-4">Support</div>
+        <ul class="space-y-2 text-sm">
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Patreon</a></li>
+          <li><a href="#newsletter" class="hover:text-[var(--accent)] transition">Newsletter</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">Merch Store</a></li>
+          <li><a href="#" class="hover:text-[var(--accent)] transition">RSS Feed</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pt-8 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs text-[var(--fg-dim)] font-mono">
+      <div class="flex items-center gap-4">
+        <span>© 2025 KILBURN MEDIA LTD</span>
+        <span class="hidden md:inline">·</span>
+        <span class="hidden md:inline">CO. NO. 11824719</span>
+      </div>
+      <div class="flex items-center gap-4 flex-wrap">
+        <a href="#" class="hover:text-white transition uppercase">Privacy</a>
+        <a href="#" class="hover:text-white transition uppercase">Terms</a>
+        <a href="#" class="hover:text-white transition uppercase">Disclosures</a>
+        <span class="flex items-center gap-2" style="color: var(--section-accent)">
+          <span class="live-dot"></span>ALL SYSTEMS OPERATIONAL
+        </span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ===== Video data =====
+const videos = [
+  { id: 247, title: "The Phone That Killed The Compact Flagship", cat: "review", date: "2 DAYS AGO", views: "142K", runtime: "18:24", img: "vid247", tag: "NEW" },
+  { id: 246, title: "I Bought Every $100 Wireless Earbud on Amazon", cat: "comparison", date: "1 WEEK AGO", views: "289K", runtime: "24:11", img: "vid246" },
+  { id: 245, title: "Why Apple's M4 Mac Mini Changes Everything", cat: "deep", date: "2 WEEKS AGO", views: "412K", runtime: "32:08", img: "vid245" },
+  { id: 244, title: "Sony A7V vs Canon R5 II — The Real Test", cat: "comparison", date: "3 WEEKS AGO", views: "178K", runtime: "19:47", img: "vid244" },
+  { id: 243, title: "My 2025 Desk Setup — Final Form", cat: "setup", date: "1 MONTH AGO", views: "356K", runtime: "14:22", img: "vid243" },
+  { id: 242, title: "ChatGPT Can Now Write Code. I'm Worried.", cat: "news", date: "1 MONTH AGO", views: "524K", runtime: "11:35", img: "vid242" },
+  { id: 241, title: "The Truth About OLED Burn-In (3 Year Study)", cat: "deep", date: "6 WEEKS AGO", views: "632K", runtime: "28:14", img: "vid241" },
+  { id: 240, title: "Framework 16 Review — A Laptop I Can Fix", cat: "review", date: "2 MONTHS AGO", views: "247K", runtime: "21:39", img: "vid240" },
+  { id: 239, title: "Behind The Scenes: Building The New Studio", cat: "bts", date: "2 MONTHS AGO", views: "98K", runtime: "16:52", img: "vid239" },
+  { id: 238, title: "RTX 5090 — Don't Buy One Yet", cat: "news", date: "2 MONTHS AGO", views: "1.1M", runtime: "12:48", img: "vid238" },
+  { id: 237, title: "iPad Pro M4 — The Laptop Replacement Question", cat: "review", date: "3 MONTHS AGO", views: "384K", runtime: "23:17", img: "vid237" },
+  { id: 236, title: "I Tracked Every Notification For 30 Days", cat: "deep", date: "3 MONTHS AGO", views: "447K", runtime: "19:05", img: "vid236" },
+];
+
+// ===== Render video grid =====
+const grid = document.getElementById('videoGrid');
+function renderVideos(filter = 'all') {
+  grid.innerHTML = '';
+  const filtered = filter === 'all' ? videos : videos.filter(v => v.cat === filter);
+  filtered.forEach((v, i) => {
+    const card = document.createElement('article');
+    card.className = 'video-card shuffling';
+    card.style.animationDelay = `${i * 35}ms`;
+    card.innerHTML = `
+      <div class="video-card-thumb">
+        <img src="https://picsum.photos/seed/${v.img}/640/360" alt="${v.title}">
+        <div class="preview-tag">PREVIEWING</div>
+        <div class="preview-progress"></div>
+        <div class="absolute bottom-3 right-3 bg-black/85 text-white px-2 py-1 text-[11px] font-mono z-[2]">${v.runtime}</div>
+        ${v.tag ? `<div class="absolute top-3 right-3 bg-[var(--accent)] text-black px-2 py-1 text-[10px] font-mono font-bold z-[3]">${v.tag}</div>` : ''}
+        <div class="absolute top-3 left-3 z-[3]">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-white bg-black/60 backdrop-blur px-2 py-1 border border-white/20">EP ${v.id}</span>
+        </div>
+      </div>
+      <div class="mt-3">
+        <h3 class="font-display text-lg leading-tight mb-2 hover:text-[var(--accent)] transition cursor-pointer">${v.title}</h3>
+        <div class="flex items-center gap-3 text-[11px] font-mono text-[var(--fg-dim)] uppercase tracking-wider">
+          <span>${v.date}</span><span>·</span><span>${v.views} views</span>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+renderVideos();
+
+// ===== Filter logic =====
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    renderVideos(chip.dataset.filter);
+  });
+});
+
+// ===== Products data =====
+const products = [
+  { name: "Audio-Technica M50x", price: 149, cat: "AUDIO", why: "Studio reference for 15 years. Still unbeaten.", img: "prod1" },
+  { name: "Logitech MX Master 4", price: 119, cat: "INPUT", why: "The only mouse I recommend without caveats.", img: "prod2" },
+  { name: "Røde PodMic USB", price: 199, cat: "AUDIO", why: "Better than mics twice the price. My daily.", img: "prod3" },
+  { name: "Anker 737 Power Bank", price: 89, cat: "ACCESSORY", why: "Flown with this 40+ times. Indestructible.", img: "prod4" },
+  { name: "Keychron Q1 Pro", price: 199, cat: "INPUT", why: "Best budget mechanical. End of debate.", img: "prod5" },
+  { name: "Airthings Wave Plus", price: 249, cat: "HOME", why: "Know your air quality. Worth every cent.", img: "prod6" },
+  { name: "Sony WH-1000XM6", price: 449, cat: "AUDIO", why: "Best noise cancelling. Period.", img: "prod7" },
+  { name: "iPad Pro M4 11\"", price: 999, cat: "TABLET", why: "The only tablet worth $1000 in 2025.", img: "prod8" },
+  { name: "Kinesis Advantage360", price: 649, cat: "INPUT", why: "Daily driver since 2023. Saved my wrists.", img: "prod9" },
+  { name: "Apple Studio Display", price: 1599, cat: "DISPLAYS", why: "Controversial but I genuinely love mine.", img: "prod10" },
+  { name: "LG C4 OLED 65\"", price: 1899, cat: "DISPLAYS", why: "Best TV for the money this year.", img: "prod11" },
+  { name: "Sony A7CR", price: 1999, cat: "CAMERA", why: "Compact body, full-frame image quality.", img: "prod12" },
+];
+
+const recGrid = document.getElementById('recGrid');
+
+function renderProducts() {
+  recGrid.innerHTML = '';
+  // Sort by price ascending initially
+  const sorted = [...products].sort((a, b) => a.price - b.price);
+  sorted.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'rec-card';
+    card.dataset.price = p.price;
+    card.dataset.cat = p.cat;
+    card.innerHTML = `
+      <div class="aspect-[4/3] overflow-hidden bg-black relative">
+        <img src="https://picsum.photos/seed/${p.img}/600/450" class="w-full h-full object-cover" alt="${p.name}">
+        <div class="absolute top-3 left-3 bg-[var(--yellow)] text-black px-2 py-1 text-[10px] font-mono font-bold tracking-wider">${p.cat}</div>
+        <div class="absolute bottom-3 right-3 bg-black/90 text-white px-3 py-1.5 text-sm font-mono">$${p.price.toLocaleString()}</div>
+      </div>
+      <div class="p-5">
+        <h3 class="font-display text-xl mb-2">${p.name}</h3>
+        <p class="text-sm text-[var(--fg-dim)] mb-4 leading-relaxed">"${p.why}"</p>
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-mono text-[var(--fg-dim)] uppercase">Verified Purchase</span>
+          <button class="text-[var(--yellow)] hover:text-white transition flex items-center gap-1.5 font-semibold uppercase tracking-wider">
+            Buy <i class="fas fa-arrow-up-right-from-square text-[9px]"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    recGrid.appendChild(card);
+  });
+}
+renderProducts();
+
+// ===== Price slider with FLIP animation =====
+const priceLow = document.getElementById('priceLow');
+const priceHigh = document.getElementById('priceHigh');
+const priceLowLabel = document.getElementById('priceLowLabel');
+const priceHighLabel = document.getElementById('priceHighLabel');
+const priceLowDisplay = document.getElementById('priceLowDisplay');
+const priceHighDisplay = document.getElementById('priceHighDisplay');
+const productCount = document.getElementById('productCount');
+
+function updatePriceFilter() {
+  let low = parseInt(priceLow.value);
+  let high = parseInt(priceHigh.value);
+  if (low > high) { low = high; priceLow.value = low; }
+
+  priceLowLabel.textContent = `$${low.toLocaleString()}`;
+  priceHighLabel.textContent = `$${high.toLocaleString()}`;
+  priceLowDisplay.textContent = `$${low.toLocaleString()}`;
+  priceHighDisplay.textContent = `$${high.toLocaleString()}`;
+
+  const cards = Array.from(recGrid.querySelectorAll('.rec-card'));
+
+  // FLIP - First: record positions
+  const firstPositions = new Map();
+  cards.forEach(c => firstPositions.set(c, c.getBoundingClientRect()));
+
+  // Filter visibility
+  let visibleCount = 0;
+  cards.forEach(c => {
+    const price = parseInt(c.dataset.price);
+    const visible = price >= low && price <= high;
+    c.dataset.visible = visible ? '1' : '0';
+    if (visible) visibleCount++;
+  });
+
+  // Re-sort DOM by price (visible first, sorted ascending; hidden after)
+  const visible = cards.filter(c => c.dataset.visible === '1')
+    .sort((a, b) => parseInt(a.dataset.price) - parseInt(b.dataset.price));
+  const hidden = cards.filter(c => c.dataset.visible === '0');
+
+  visible.forEach(c => recGrid.appendChild(c));
+  hidden.forEach(c => recGrid.appendChild(c));
+
+  // Apply visibility classes
+  cards.forEach(c => {
+    if (c.dataset.visible === '0') {
+      c.classList.add('filtered-out');
+    } else {
+      c.classList.remove('filtered-out');
+    }
+  });
+
+  // FLIP - Last + Invert + Play
+  requestAnimationFrame(() => {
+    visible.forEach(c => {
+      const first = firstPositions.get(c);
+      const last = c.getBoundingClientRect();
+      const dy = first.top - last.top;
+      const dx = first.left - last.left;
+      if (Math.abs(dy) < 1 && Math.abs(dx) < 1) return;
+
+      c.style.transform = `translate(${dx}px, ${dy}px)`;
+      c.style.transition = 'none';
+      c.style.zIndex = '5';
+
+      requestAnimationFrame(() => {
+        c.style.transform = '';
+        c.style.transition = 'transform 0.55s cubic-bezier(0.4, 0, 0.2, 1)';
+        setTimeout(() => { c.style.zIndex = ''; }, 600);
+      });
+    });
+  });
+
+  productCount.textContent = visibleCount;
+}
+
+priceLow.addEventListener('input', updatePriceFilter);
+priceHigh.addEventListener('input', updatePriceFilter);
+
+// ===== Typewriter placeholder =====
+const phrases = [
+  "you@example.com",
+  "your.real.inbox@here.com",
+  "first.last@gmail.com",
+  "the.email.you.actually.check",
+  "no.spam.i.promise@kilburn.tv",
+];
+
+let phraseIdx = 0;
+let charIdx = 0;
+let deleting = false;
+const input = document.getElementById('emailInput');
+
+function typeLoop() {
+  if (document.activeElement === input || input.value) {
+    input.setAttribute('placeholder', '');
+    setTimeout(typeLoop, 600);
+    return;
+  }
+
+  const phrase = phrases[phraseIdx];
+  let text;
+
+  if (!deleting) {
+    text = phrase.substring(0, charIdx + 1);
+    charIdx++;
+    if (charIdx >= phrase.length) {
+      deleting = true;
+      setTimeout(typeLoop, 2400);
+      return;
+    }
+  } else {
+    text = phrase.substring(0, charIdx - 1);
+    charIdx--;
+    if (charIdx <= 0) {
+      deleting = false;
+      phraseIdx = (phraseIdx + 1) % phrases.length;
+    }
+  }
+
+  input.setAttribute('placeholder', text + (charIdx % 2 ? '|' : ''));
+  setTimeout(typeLoop, deleting ? 28 : 55 + Math.random() * 70);
+}
+typeLoop();
+
+// ===== Subscribe handler =====
+const form = document.getElementById('newsletterForm');
+const status = document.getElementById('subscribeStatus');
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = input.value.trim();
+  if (!email || !email.includes('@')) {
+    status.textContent = '> ERROR: Please enter a valid email address.';
+    status.style.color = 'var(--accent)';
+    return;
+  }
+  status.textContent = '> SUBSCRIBED. Check your inbox for confirmation.';
+  status.style.color = 'var(--yellow)';
+  input.value = '';
+  setTimeout(() => { status.textContent = ''; }, 5000);
+});
+
+// ===== Scroll progress + section accent tracking =====
+const progressBar = document.getElementById('scrollProgress');
+const backToTop = document.getElementById('backToTop');
+
+const accentMap = {
+  red: '#ff2a2a',
+  blue: '#2b6fff',
+  yellow: '#e5ff00'
+};
+
+function updateScroll() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = (scrollTop / docHeight) * 100;
+  progressBar.style.width = `${progress}%`;
+  backToTop.classList.toggle('visible', scrollTop > 800);
+}
+window.addEventListener('scroll', updateScroll, { passive: true });
+
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Section accent color shifts via IntersectionObserver
+const sectionObserver = new IntersectionObserver((entries) => {
+  // Find the entry closest to the trigger zone that's intersecting
+  const intersecting = entries.filter(e => e.isIntersecting);
+  if (intersecting.length === 0) return;
+  
+  // Pick the one with highest intersection ratio
+  intersecting.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+  const target = intersecting[0].target;
+  const accent = target.dataset.accent;
+  if (accent && accentMap[accent]) {
+    document.documentElement.style.setProperty('--section-accent', accentMap[accent]);
+  }
+}, { rootMargin: '-25% 0px -55% 0px', threshold: [0, 0.1, 0.3, 0.6] });
+
+document.querySelectorAll('[data-accent]').forEach(s => sectionObserver.observe(s));
+
+updateScroll();
+
+// ===== Chapter clicks =====
+document.querySelectorAll('.chapter').forEach(ch => {
+  ch.addEventListener('click', () => {
+    document.querySelectorAll('.chapter').forEach(c => {
+      c.classList.remove('active');
+      c.classList.add('text-[var(--fg-dim)]');
+    });
+    ch.classList.add('active');
+    ch.classList.remove('text-[var(--fg-dim)]');
+  });
+});
+
+// Disable hover preview on touch devices (no hover state)
+if ('ontouchstart' in window && window.innerWidth < 1024) {
+  document.body.classList.add('touch-device');
+}
+</script>
+
+</body>
+</html>
