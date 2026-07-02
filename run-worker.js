@@ -5,7 +5,12 @@ const path = require('path');
 const worker = spawn('npx', ['tsx', 'src/workers/worker.ts'], {
   cwd: __dirname,
   stdio: 'inherit',
-  shell: true
+  shell: true,
+  env: {
+    ...process.env,
+    // Use system CA certificates to avoid SSL verification errors on Windows
+    NODE_OPTIONS: '--use-system-ca'
+  }
 });
 
 worker.on('exit', (code) => {
