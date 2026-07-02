@@ -1,0 +1,59 @@
+// Podcast Creator — esquema MVP (SQLite)
+// Estados y etapas se guardan como strings (SQLite no soporta enums nativos).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Podcast {
+  id          String   @id @default(cuid())
+  title       String
+  topic       String
+  // deep-dive | brief | critique | debate
+  format      String   @default("deep-dive")
+  // short | default | long
+  length      String   @default("default")
+  language    String   @default("es")
+  // PENDING | GENERATING | PUBLISHED | FAILED
+  status      String   @default("PENDING")
+  notebookId  String?
+  audioPath   String?
+  durationSec Int?
+  plays       Int      @default(0)
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sources PodcastSource[]
+  job     GenerationJob?
+}
+
+model PodcastSource {
+  id        String   @id @default(cuid())
+  podcastId String
+  // url | research
+  kind      String   @default("url")
+  value     String
+  podcast   Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model GenerationJob {
+  id        String   @id @default(cuid())
+  podcastId String   @unique
+  // QUEUED | RUNNING | DONE | FAILED
+  status    String   @default("QUEUED")
+  // etapa legible: created | research | generating | downloading | done
+  stage     String   @default("queued")
+  progress  Int      @default(0)
+  errorMsg  String?
+  attempts  Int      @default(0)
+  podcast   Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+next-env.d.ts
+dev.db
+dev.db-journal
+public/audio/*.mp3
+.env
+*.log
