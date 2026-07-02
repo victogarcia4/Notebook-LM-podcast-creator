@@ -26,6 +26,7 @@ export function NotebookImporter({ onJobCreated }: Props) {
   const [length, setLength] = useState("default");
   const [language, setLanguage] = useState("es");
   const [importing, setImporting] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     fetchNotebooks();
@@ -67,6 +68,47 @@ export function NotebookImporter({ onJobCreated }: Props) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleLogin() {
+    setError(null);
+    setLoggingIn(true);
+    try {
+      const res = await fetch("/api/auth/login", { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) {
+        setError(data.error || "Login failed");
+        setLoggingIn(false);
+        return;
+      }
+
+      // Poll for auth status every 4 seconds
+      let elapsed = 0;
+      const pollInterval = setInterval(async () => {
+        elapsed += 4;
+        try {
+          const statusRes = await fetch("/api/auth/status", { cache: "no-store" });
+          const statusData = await statusRes.json();
+
+          if (statusData.valid) {
+            clearInterval(pollInterval);
+            setLoggingIn(false);
+            // Auto-retry fetching notebooks
+            fetchNotebooks();
+          } else if (elapsed >= 300) {
+            // Timeout after 5 minutes
+            clearInterval(pollInterval);
+            setLoggingIn(false);
+            setError("Login timeout. Please try again.");
+          }
+        } catch {
+          // Continue polling
+        }
+      }, 4000);
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+      setLoggingIn(false);
     }
   }
 
@@ -123,13 +165,42 @@ export function NotebookImporter({ onJobCreated }: Props) {
     );
   }
 
+  if (loggingIn) {
+    return (
+      <div className="card border-yellow-500 bg-yellow-500/10">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="h-2 w-2 animate-pulse bg-yellow-500" />
+          <p className="font-mono text-xs uppercase tracking-widest text-yellow-500">
+            LOGGING IN
+          </p>
+        </div>
+        <p className="text-sm text-dim">
+          A browser window has opened. Please complete the NotebookLM login and
+          return here. Waiting for authentication...
+        </p>
+      </div>
+    );
+  }
+
   if (error) {
+    // Detect if this is an authentication error
+    const isAuthError = error.toLowerCase().includes("session") ||
+                        error.toLowerCase().includes("expired") ||
+                        error.toLowerCase().includes("authenticate");
+
     return (
       <div className="card border-red-500 bg-red-500/10">
-        <p className="text-red-500">{error}</p>
-        <button className="btn-outline mt-4" onClick={fetchNotebooks}>
-          Try Again
-        </button>
+        <p className="text-red-500 mb-4">{error}</p>
+        <div className="flex gap-2">
+          {isAuthError && (
+            <button className="btn-primary" onClick={handleLogin}>
+              → LOGIN TO NOTEBOOKLM
+            </button>
+          )}
+          <button className="btn-outline" onClick={fetchNotebooks}>
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }

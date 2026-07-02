@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const VALID_FORMATS = ["deep-dive", "brief", "critique", "debate"];
 const VALID_LENGTHS = ["short", "default", "long"];
 

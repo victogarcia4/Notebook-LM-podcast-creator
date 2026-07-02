@@ -5,6 +5,8 @@ import {
   listAudios,
 } from "@/lib/notebooklm/client";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     // Verify NotebookLM authentication
