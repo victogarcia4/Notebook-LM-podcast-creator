@@ -52,14 +52,17 @@ Navegador ──HTTP / SSE──▶ Next.js (UI + API Routes) ──▶ SQLite (
 
 ## 4. Cómo ejecutar
 
+> ⚠️ **Ejecutar dentro de la carpeta del proyecto** `C:\Users\skint\Desktop\Podcast Creator` (NO en `Desktop\NotebookLMSkill`, que solo tiene la skill/plan → `npm` da `enoent`).
+
 ```bash
+cd "C:\Users\skint\Desktop\Podcast Creator"
 npm install                 # instala deps (postinstall corre prisma generate)
 npm run db:push             # crea/actualiza SQLite (prisma/dev.db)
 npm run worker              # TERMINAL 1: worker (dejar abierto)
 npm run dev                 # TERMINAL 2: web en http://localhost:3000
 ```
 
-Requisitos previos: `notebooklm.exe` instalado y **autenticado** (ver §9).
+Requisitos previos: `notebooklm.exe` instalado y **autenticado** (ver §9). Si la BD aún no existe, `npm run db:push` la crea. Si `prisma generate`/`db push`/`build` fallan por certificado, usar `$env:NODE_OPTIONS="--use-system-ca"` (ver §10.3).
 
 ---
 
@@ -304,4 +307,4 @@ El CLI ya soporta `generate video | slide-deck | quiz | flashcards | infographic
 
 ## 20. Changelog
 
-- **2026-07-02** — Estado inicial documentado. App creada de cero: generación end-to-end vía NotebookLM CLI, cola+worker+SSE, biblioteca+reproductor. Añadido: bilingüe EN/ES con toggle y títulos traducidos, rediseño editorial (de `Youtube.html`), nombre "Notebook LM Podcast Creator", footer con foto/crédito, banner de estado de sesión, borrar/reintentar podcasts, arreglos de robustez (barra de progreso instantánea, reintentos en investigación), y **botón "Iniciar sesión en NotebookLM"** en la app (`/api/auth/login` + `scripts/nlm_login.py`). Deploy inicial en Vercel (solo vitrina de UI).
+- **2026-07-02** — Estado inicial documentado. App creada de cero: generación end-to-end vía NotebookLM CLI, cola+worker+SSE, biblioteca+reproductor. Añadido: bilingüe EN/ES con toggle y títulos traducidos, rediseño editorial (de `Youtube.html`), nombre "Notebook LM Podcast Creator", footer con foto/crédito, banner de estado de sesión, borrar/reintentar podcasts, arreglos de robustez (barra de progreso instantánea, reintentos en investigación), y **botón "Iniciar sesión en NotebookLM"** en la app (`/api/auth/login` + `scripts/nlm_login.py`). Deploy inicial en Vercel (solo vitrina de UI). Botón de login **probado OK** (sesión se restaura y el banner pasa a verde). Añadida §19 con sugerencias/mejoras propuestas. Al cierre de la sesión: 2 podcasts en la BD local (1 PUBLISHED, 1 PUBLISHED tras retry), sesión de NotebookLM válida.
